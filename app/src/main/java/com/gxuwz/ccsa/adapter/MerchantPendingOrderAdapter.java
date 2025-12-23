@@ -20,6 +20,8 @@ public class MerchantPendingOrderAdapter extends RecyclerView.Adapter<MerchantPe
 
     public interface OnOrderActionListener {
         void onAccept(Order order);
+        // 【新增】取消订单接口
+        void onCancel(Order order);
     }
 
     public void setOnOrderActionListener(OnOrderActionListener listener) {
@@ -41,6 +43,7 @@ public class MerchantPendingOrderAdapter extends RecyclerView.Adapter<MerchantPe
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Order order = list.get(position);
 
+        // ... [此处省略重复的头部、图片、实物/服务、居民信息绑定代码，保持不变] ...
         // 1. 头部基础信息
         holder.tvOrderNo.setText("订单号: " + order.orderNo);
         holder.tvStatus.setText(order.status);
@@ -49,7 +52,7 @@ public class MerchantPendingOrderAdapter extends RecyclerView.Adapter<MerchantPe
         // 2. 图片
         Glide.with(holder.itemView.getContext())
                 .load(order.productImageUrl)
-                .placeholder(R.drawable.ic_launcher_background) // 请替换为默认图
+                .placeholder(R.drawable.ic_launcher_background)
                 .into(holder.ivProductImg);
 
         holder.tvProductName.setText(order.productName);
@@ -57,22 +60,14 @@ public class MerchantPendingOrderAdapter extends RecyclerView.Adapter<MerchantPe
 
         // 3. 区分实物与服务
         boolean isService = "服务".equals(order.productType) || "SERVICE".equalsIgnoreCase(order.productType);
-
         if (isService) {
-            // 显示服务布局，隐藏实物布局
             holder.llServiceInfo.setVisibility(View.VISIBLE);
             holder.llPhysicalInfo.setVisibility(View.GONE);
-
-            // 服务详情
             holder.tvServicePriceUnit.setText("价格: ¥" + order.unitPrice + "/" + order.productUnit + " × " + order.serviceCount);
-            holder.tvServiceType.setText("服务类型: 上门服务"); // 或使用 order.productType
-
+            holder.tvServiceType.setText("服务类型: 上门服务");
         } else {
-            // 显示实物布局，隐藏服务布局
             holder.llPhysicalInfo.setVisibility(View.VISIBLE);
             holder.llServiceInfo.setVisibility(View.GONE);
-
-            // 实物详情
             holder.tvPhysicalSpec.setText("规格: " + order.selectedSpec);
             holder.tvPhysicalDelivery.setText("方式: " + (order.deliveryMethod == null ? "商家配送" : order.deliveryMethod));
         }
@@ -84,11 +79,23 @@ public class MerchantPendingOrderAdapter extends RecyclerView.Adapter<MerchantPe
         // 5. 底部支付信息
         holder.tvPayAmount.setText("¥" + order.payAmount);
         holder.tvPayMethod.setText(order.paymentMethod);
+        // ... [省略结束] ...
 
-        // 6. 接单按钮事件
+        // 6. 按钮事件
         holder.btnAccept.setOnClickListener(v -> {
             if (listener != null) listener.onAccept(order);
         });
+
+        // 【新增】取消按钮逻辑
+        // 只有在“待接单”状态下显示取消按钮 (虽然此页面基本都是待接单，但加判断更安全)
+        if ("待接单".equals(order.status)) {
+            holder.btnCancel.setVisibility(View.VISIBLE);
+            holder.btnCancel.setOnClickListener(v -> {
+                if (listener != null) listener.onCancel(order);
+            });
+        } else {
+            holder.btnCancel.setVisibility(View.GONE);
+        }
     }
 
     @Override
@@ -98,42 +105,36 @@ public class MerchantPendingOrderAdapter extends RecyclerView.Adapter<MerchantPe
         TextView tvOrderNo, tvStatus, tvCreateTime;
         ImageView ivProductImg;
         TextView tvProductName, tvTags;
-
-        // 实物容器
-        LinearLayout llPhysicalInfo;
-        TextView tvPhysicalSpec, tvPhysicalDelivery;
-
-        // 服务容器
-        LinearLayout llServiceInfo;
-        TextView tvServicePriceUnit, tvServiceType;
-
-        // 居民与支付
-        TextView tvResidentInfo, tvAddress;
-        TextView tvPayAmount, tvPayMethod;
+        LinearLayout llPhysicalInfo, llServiceInfo;
+        TextView tvPhysicalSpec, tvPhysicalDelivery, tvServicePriceUnit, tvServiceType;
+        TextView tvResidentInfo, tvAddress, tvPayAmount, tvPayMethod;
         Button btnAccept;
+        // 【新增】取消按钮
+        Button btnCancel;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
+            // ... [保持原有findViewById]
             tvOrderNo = itemView.findViewById(R.id.tv_order_no);
             tvStatus = itemView.findViewById(R.id.tv_order_status);
             tvCreateTime = itemView.findViewById(R.id.tv_create_time);
             ivProductImg = itemView.findViewById(R.id.iv_product_img);
             tvProductName = itemView.findViewById(R.id.tv_product_name);
             tvTags = itemView.findViewById(R.id.tv_tags);
-
             llPhysicalInfo = itemView.findViewById(R.id.ll_physical_info);
             tvPhysicalSpec = itemView.findViewById(R.id.tv_physical_spec);
             tvPhysicalDelivery = itemView.findViewById(R.id.tv_physical_delivery);
-
             llServiceInfo = itemView.findViewById(R.id.ll_service_info);
             tvServicePriceUnit = itemView.findViewById(R.id.tv_service_price_unit);
             tvServiceType = itemView.findViewById(R.id.tv_service_type);
-
             tvResidentInfo = itemView.findViewById(R.id.tv_resident_info);
             tvAddress = itemView.findViewById(R.id.tv_address);
             tvPayAmount = itemView.findViewById(R.id.tv_pay_amount);
             tvPayMethod = itemView.findViewById(R.id.tv_pay_method);
             btnAccept = itemView.findViewById(R.id.btn_accept_order);
+
+            // 【新增】
+            btnCancel = itemView.findViewById(R.id.btn_cancel_order);
         }
     }
 }
