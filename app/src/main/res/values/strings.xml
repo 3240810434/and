@@ -1,0 +1,28 @@
+<resources>
+    <string name="app_name">CCSA</string>
+    <string name="delete">删除</string>
+    <string name="select_appeal_type">选择申诉类型</string>
+    <string name="select_building">选择楼栋</string>
+    <string name="select_room_type">选择房屋类型</string>
+    <string name="payment_period">缴费周期</string>
+    <string name="paid_status">已缴费</string>
+    <string name="amount_format">应缴金额：%.2f元</string>
+    <string name="payment_method_wechat">微信支付</string>
+    <string name="payment_time_format">支付时间：%s</string>
+    <string name="receipt_number_format">收据编号：%s</string>
+
+    <!-- 新增字符串（确保命名无空格，与引用一致） -->
+    <string name="building_label">楼栋：</string>
+    <string name="payment_status_label">缴费状态：</string>
+    <string name="month_label">月份：</string>
+    <string name="date_hint">yyyy-MM</string>
+    <string name="confirm">确认</string>
+    <string name="cancel">取消</string>
+    <string name="alarm_confirm_hint">双击 确认报警</string>
+    <string name="alarm_connecting">正在联通物业值班室...</string>
+    <string name="alarm_success">报警成功！值班人员已收到通知。</string>
+    <string name="alarm_title">【紧急报警】</string>
+    <string name="alarm_content">居民 %1$s 发起了一键报警！请立即处理！</string>
+    <string name="property_reply_title">物业值班室</string>
+    <string name="property_reply_content">【系统消息】您的报警求助已收到，保安队王队长（工号001）正在前往您的住址，请注意安全。</string>
+</resources>

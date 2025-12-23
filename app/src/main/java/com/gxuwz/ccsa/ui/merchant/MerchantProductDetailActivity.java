@@ -1,0 +1,382 @@
+package com.gxuwz.ccsa.ui.merchant;
+
+import android.app.Dialog;
+import android.content.Intent;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import android.os.Bundle;
+import android.util.DisplayMetrics;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.RatingBar;
+import android.widget.RelativeLayout;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.viewpager2.widget.ViewPager2;
+
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.signature.ObjectKey;
+import com.gxuwz.ccsa.R;
+import com.gxuwz.ccsa.adapter.BannerAdapter;
+import com.gxuwz.ccsa.db.AppDatabase;
+import com.gxuwz.ccsa.model.Merchant;
+import com.gxuwz.ccsa.model.Product;
+import com.gxuwz.ccsa.model.ProductReview; // 引入评价模型
+import com.gxuwz.ccsa.ui.resident.ReviewListActivity; // 引入评论列表页
+import com.gxuwz.ccsa.util.DateUtils; // 引入日期工具
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.Executors;
+
+public class MerchantProductDetailActivity extends AppCompatActivity {
+
+    private int productId;
+    private Product currentProduct;
+    private ViewPager2 vpBanner;
+    private TextView tvName, tvMerchantName, tvDesc, tvPrice, tvDelivery, tvTag;
+    private ImageView ivMerchantAvatar, btnBack, btnEdit;
+
+    // 【新增】评价相关控件
+    private LinearLayout layoutReviewContainer;
+    private TextView tvNoReviews;
+    private TextView btnMoreReviews;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_merchant_product_detail);
+
+        productId = getIntent().getIntExtra("product_id", -1);
+        initView();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        loadData();
+        loadReviewsPreview(); // 【新增】刷新评价数据
+    }
+
+    private void initView() {
+        btnBack = findViewById(R.id.btn_close_detail);
+        btnEdit = findViewById(R.id.btn_edit);
+
+        vpBanner = findViewById(R.id.vp_banner);
+        if (vpBanner != null) vpBanner.setVisibility(View.VISIBLE);
+
+        tvName = findViewById(R.id.tv_detail_name);
+        tvDesc = findViewById(R.id.tv_detail_desc);
+        tvPrice = findViewById(R.id.tv_detail_price);
+
+        tvDelivery = findViewById(R.id.tv_detail_delivery);
+        tvTag = findViewById(R.id.tv_detail_tag);
+
+        ivMerchantAvatar = findViewById(R.id.iv_merchant_avatar);
+        tvMerchantName = findViewById(R.id.tv_merchant_name);
+
+        // 【新增】绑定评价控件
+        layoutReviewContainer = findViewById(R.id.layout_review_container);
+        tvNoReviews = findViewById(R.id.tv_no_reviews);
+        btnMoreReviews = findViewById(R.id.btn_more_reviews);
+
+        btnBack.setOnClickListener(v -> finish());
+        btnEdit.setOnClickListener(v -> showEditDialog());
+
+        // 【新增】点击查看全部评价
+        btnMoreReviews.setOnClickListener(v -> {
+            if (currentProduct != null) {
+                // 复用居民端的评论列表页面，因为它只需要 product_id 即可查询
+                Intent intent = new Intent(this, ReviewListActivity.class);
+                // 【修复】不要强制转换为 long，ReviewListActivity 接收的是 int
+                intent.putExtra("product_id", currentProduct.getId());
+                startActivity(intent);
+            }
+        });
+    }
+
+    // 【新增】加载最新的两条评价
+    private void loadReviewsPreview() {
+        if (productId == -1) return;
+
+        new Thread(() -> {
+            // 从数据库查询前2条评论
+            List<ProductReview> reviews = AppDatabase.getInstance(this)
+                    .productReviewDao().getTop2Reviews(productId);
+
+            runOnUiThread(() -> {
+                if (layoutReviewContainer == null) return;
+                layoutReviewContainer.removeAllViews();
+
+                if (reviews == null || reviews.isEmpty()) {
+                    tvNoReviews.setVisibility(View.VISIBLE);
+                    layoutReviewContainer.addView(tvNoReviews);
+                } else {
+                    tvNoReviews.setVisibility(View.GONE);
+                    // 动态添加 View，复用项目现有的 item_product_review.xml
+                    for (ProductReview review : reviews) {
+                        View view = LayoutInflater.from(this).inflate(R.layout.item_product_review, layoutReviewContainer, false);
+
+                        ImageView ivAvatar = view.findViewById(R.id.img_avatar);
+                        TextView tvName = view.findViewById(R.id.tv_username);
+                        TextView tvContent = view.findViewById(R.id.tv_content);
+                        TextView tvTime = view.findViewById(R.id.tv_time);
+                        RatingBar rb = view.findViewById(R.id.item_rating);
+
+                        // 注意：如果 item_product_review 中有 RecyclerView 用于显示图片，
+                        // 在预览模式下通常隐藏或忽略，除非你希望也在这里实现图片展示逻辑。
+                        // 这里我们隐藏图片列表以保持简洁，详情请点击“查看全部”
+                        View recyclerImages = view.findViewById(R.id.item_recycler_images);
+                        if (recyclerImages != null) {
+                            recyclerImages.setVisibility(View.GONE);
+                        }
+
+                        tvName.setText(review.userName);
+                        tvContent.setText(review.content);
+                        // 使用项目中的 DateUtils 格式化时间
+                        tvTime.setText(DateUtils.formatDateTime(review.createTime));
+                        rb.setRating(review.score / 2.0f); // 假设 score 是 10分制
+
+                        Glide.with(this).load(review.userAvatar)
+                                .placeholder(R.drawable.ic_avatar)
+                                .error(R.drawable.ic_avatar)
+                                .into(ivAvatar);
+
+                        layoutReviewContainer.addView(view);
+                    }
+                }
+            });
+        }).start();
+    }
+
+    private void loadData() {
+        new Thread(() -> {
+            Product product = AppDatabase.getInstance(this).productDao().getProductById(productId);
+            if (product != null) {
+                currentProduct = product;
+                Merchant merchant = AppDatabase.getInstance(this).merchantDao().findById(product.merchantId);
+                runOnUiThread(() -> updateUI(product, merchant));
+            } else {
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "商品不存在", Toast.LENGTH_SHORT).show();
+                    finish();
+                });
+            }
+        }).start();
+    }
+
+    private void updateUI(Product product, Merchant merchant) {
+        // 1. 设置名称
+        tvName.setText(product.name);
+
+        // 2. 设置描述
+        tvDesc.setText(product.description);
+
+        // 3. 设置轮播图
+        if (vpBanner != null) {
+            List<String> imageList = new ArrayList<>();
+            if (product.imagePaths != null && !product.imagePaths.isEmpty()) {
+                String[] paths = product.imagePaths.split(",");
+                imageList.addAll(Arrays.asList(paths));
+            }
+            BannerAdapter bannerAdapter = new BannerAdapter(this, imageList);
+            vpBanner.setAdapter(bannerAdapter);
+            bannerAdapter.setOnBannerClickListener(this::showZoomImage);
+        }
+
+        // 4. 根据类型设置 价格、配送/服务方式、标签
+        if ("SERVICE".equals(product.type)) {
+            // === 服务商品逻辑 ===
+            String unit = (product.unit != null && !product.unit.isEmpty()) ? product.unit : "次";
+            tvPrice.setText("¥ " + product.price + " / " + unit);
+            tvPrice.setTextSize(18);
+
+            String serviceMode = "上门服务";
+            try {
+                if (product.priceTableJson != null) {
+                    JSONArray ja = new JSONArray(product.priceTableJson);
+                    if (ja.length() > 0) {
+                        serviceMode = ja.getJSONObject(0).optString("mode", "上门服务");
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            if (tvDelivery != null) {
+                tvDelivery.setText("服务类型：" + serviceMode);
+            }
+
+            if (tvTag != null) {
+                tvTag.setText("服务标签：" + (product.tag != null ? product.tag : "暂无标签"));
+            }
+
+        } else {
+            // === 实物商品逻辑 ===
+            try {
+                if (product.priceTableJson != null && !product.priceTableJson.isEmpty()) {
+                    JSONArray jsonArray = new JSONArray(product.priceTableJson);
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        JSONObject obj = jsonArray.getJSONObject(i);
+                        sb.append(obj.optString("desc"))
+                                .append(" : ¥ ")
+                                .append(obj.optString("price"))
+                                .append("\n");
+                    }
+                    tvPrice.setText(sb.toString().trim());
+                    tvPrice.setTextSize(16);
+                } else {
+                    tvPrice.setText("¥ " + product.price);
+                    tvPrice.setTextSize(18);
+                }
+            } catch (Exception e) {
+                tvPrice.setText("¥ " + product.price);
+            }
+
+            if (tvDelivery != null) {
+                tvDelivery.setText("配送方式：" + (product.deliveryMethod == 0 ? "商家配送" : "用户自提"));
+            }
+
+            if (tvTag != null) {
+                tvTag.setText("商品标签：" + (product.tag != null ? product.tag : "暂无标签"));
+            }
+        }
+
+        // 商家信息
+        if (merchant != null) {
+            tvMerchantName.setText(merchant.getMerchantName());
+            String avatarUrl = merchant.getAvatar();
+            if (avatarUrl != null && !avatarUrl.isEmpty()) {
+                Glide.with(this)
+                        .load(avatarUrl)
+                        .signature(new ObjectKey(String.valueOf(System.currentTimeMillis())))
+                        .error(R.drawable.merchant_picture)
+                        .into(ivMerchantAvatar);
+            } else {
+                ivMerchantAvatar.setImageResource(R.drawable.merchant_picture);
+            }
+        } else {
+            tvMerchantName.setText("未知商家");
+            ivMerchantAvatar.setImageResource(R.drawable.merchant_picture);
+        }
+    }
+
+    private void showEditDialog() {
+        if (currentProduct == null) return;
+
+        Dialog dialog = new Dialog(this, android.R.style.Theme_DeviceDefault_Light_Dialog);
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_merchant_product_edit, null);
+        dialog.setContentView(view);
+
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setGravity(Gravity.BOTTOM);
+            window.setWindowAnimations(R.style.DialogAnimation);
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            WindowManager.LayoutParams params = window.getAttributes();
+            params.width = WindowManager.LayoutParams.MATCH_PARENT;
+            DisplayMetrics displayMetrics = new DisplayMetrics();
+            getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
+            params.height = (int) (displayMetrics.heightPixels * 0.4);
+            params.flags |= WindowManager.LayoutParams.FLAG_DIM_BEHIND;
+            params.dimAmount = 0.5f;
+            window.setAttributes(params);
+        }
+
+        Button btnReEdit = view.findViewById(R.id.btn_re_edit);
+        Button btnDelete = view.findViewById(R.id.btn_delete_product);
+
+        btnReEdit.setOnClickListener(v -> {
+            dialog.dismiss();
+            goToEditPage();
+        });
+
+        btnDelete.setOnClickListener(v -> {
+            dialog.dismiss();
+            showDeleteConfirmDialog();
+        });
+
+        dialog.show();
+    }
+
+    private void goToEditPage() {
+        Intent intent;
+        if ("GOODS".equals(currentProduct.type)) {
+            intent = new Intent(this, PhysicalProductEditActivity.class);
+        } else {
+            intent = new Intent(this, ServiceEditActivity.class);
+        }
+        intent.putExtra("product", currentProduct);
+        startActivity(intent);
+    }
+
+    private void showDeleteConfirmDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle("确认删除")
+                .setMessage("确定要删除该商品吗？此操作不可撤销。")
+                .setPositiveButton("删除", (dialog, which) -> deleteProduct())
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void deleteProduct() {
+        Executors.newSingleThreadExecutor().execute(() -> {
+            AppDatabase.getInstance(this).productDao().delete(currentProduct);
+            runOnUiThread(() -> {
+                Toast.makeText(this, "商品已删除", Toast.LENGTH_SHORT).show();
+                finish();
+            });
+        });
+    }
+
+    private void showZoomImage(String imageUrl) {
+        Dialog dialog = new Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+
+        RelativeLayout root = new RelativeLayout(this);
+        root.setBackgroundColor(Color.BLACK);
+
+        ImageView fullImage = new ImageView(this);
+        RelativeLayout.LayoutParams imgParams = new RelativeLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        imgParams.addRule(RelativeLayout.CENTER_IN_PARENT);
+        fullImage.setLayoutParams(imgParams);
+        fullImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
+
+        Glide.with(this).load(imageUrl).into(fullImage);
+        root.addView(fullImage);
+
+        ImageView closeBtn = new ImageView(this);
+        closeBtn.setImageResource(R.drawable.fork);
+        int size = 100;
+        RelativeLayout.LayoutParams btnParams = new RelativeLayout.LayoutParams(size, size);
+        btnParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
+        btnParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
+        btnParams.setMargins(0, 50, 50, 0);
+        closeBtn.setLayoutParams(btnParams);
+        closeBtn.setPadding(20, 20, 20, 20);
+
+        closeBtn.setOnClickListener(v -> dialog.dismiss());
+        root.addView(closeBtn);
+
+        dialog.setContentView(root);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.BLACK));
+        }
+        dialog.show();
+    }
+}

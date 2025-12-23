@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.gxuwz.ccsa">
+
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.VIBRATE"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <application
+        android:name=".App"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.CCSA"
+        tools:targetApi="31">
+
+        <activity
+            android:name=".login.LoginActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity android:name=".login.ResidentLoginActivity" android:exported="false"/>
+        <activity android:name=".login.AdminLoginActivity" android:exported="false"/>
+        <activity android:name=".login.MerchantLoginActivity" android:exported="false"/>
+        <activity android:name=".login.ResidentRegisterActivity" android:exported="false"/>
+        <activity android:name=".login.MerchantRegisterActivity" android:exported="false"/>
+
+        <activity android:name=".MainActivity" android:exported="false"/>
+        <activity android:name=".ui.resident.ResidentMainActivity" android:exported="false"/>
+        <activity android:name=".ui.admin.AdminMainActivity" android:exported="false"/>
+        <activity android:name=".ui.merchant.MerchantMainActivity" android:exported="false"/>
+
+        <activity android:name=".ui.merchant.MerchantQualificationActivity" android:exported="false"/>
+        <activity android:name=".ui.merchant.PendingOrdersActivity" android:exported="false"/>
+        <activity android:name=".ui.merchant.ProcessingOrdersActivity" android:exported="false"/>
+        <activity android:name=".ui.merchant.CompletedOrdersActivity" android:exported="false"/>
+        <activity android:name=".ui.merchant.AfterSalesActivity" android:exported="false"/>
+        <activity android:name=".ui.merchant.ProductManagementActivity" android:exported="false" android:windowSoftInputMode="adjustResize"/>
+
+        <activity android:name=".ui.merchant.PhysicalProductEditActivity" android:exported="false" android:windowSoftInputMode="adjustResize"/>
+        <activity android:name=".ui.merchant.ServiceEditActivity" android:exported="false"/>
+        <activity android:name=".ui.merchant.MerchantProductDetailActivity" android:exported="false"/>
+
+        <activity android:name=".ui.admin.MerchantAuditListActivity" android:exported="false"/>
+        <activity android:name=".ui.admin.MerchantAuditDetailActivity" android:exported="false"/>
+        <activity android:name=".ui.admin.SetFeeStandardActivity" android:exported="false"/>
+        <activity android:name=".ui.admin.FeeAnnouncementActivity" android:exported="false"/>
+
+        <activity
+            android:name=".ui.admin.FeeAnnouncementPublishActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"/>
+
+        <activity
+            android:name=".ui.admin.FeeAnnouncementDetailActivity"
+            android:exported="false"/>
+        <activity android:name=".ui.admin.PaymentStatisticsActivity" android:exported="false"/>
+        <activity android:name=".ui.admin.PaymentAppealListActivity" android:exported="false"/>
+        <activity android:name=".ui.admin.ResidentListActivity" android:exported="false"/>
+        <activity android:name=".ui.admin.VoteManagementActivity" android:parentActivityName=".ui.admin.AdminMainActivity" android:exported="false"/>
+        <activity android:name=".ui.admin.CreateVoteActivity" android:exported="false"/>
+        <activity android:name=".ui.admin.RoomAreaManagementActivity" android:exported="false"/>
+        <activity android:name=".ui.admin.AdminRepairListActivity" android:exported="false"/>
+        <activity android:name=".ui.admin.HandlePaymentAppealActivity" android:exported="false" />
+        <activity android:name=".ui.admin.AdminRepairDetailActivity" android:exported="false"/>
+        <activity android:name=".ui.admin.AdminRepairHistoryActivity" android:exported="false"/>
+        <activity android:name=".ui.admin.AdminLifeDynamicsActivity" android:exported="false"/>
+        <activity android:name=".ui.admin.AdminNeighborHelpActivity" android:exported="false"/>
+
+        <activity android:name=".ui.resident.PayPropertyFeeActivity" android:exported="false"/>
+        <activity android:name=".ui.resident.PaymentDashboardActivity" android:exported="false"/>
+        <activity android:name=".ui.resident.PaymentDetailActivity" android:exported="false"/>
+        <activity android:name=".ui.resident.PaymentAppealActivity" android:exported="false"/>
+        <activity android:name=".ui.resident.ResidentListActivity" android:exported="false"/>
+        <activity android:name=".ui.resident.ResidentVoteActivity" android:exported="false"/>
+        <activity android:name=".ui.resident.RepairActivity" android:exported="false"/>
+        <activity android:name=".ui.resident.ContactPropertyActivity" android:exported="false"/>
+        <activity android:name="com.gxuwz.ccsa.ui.resident.MyRepairsActivity" android:exported="false" />
+        <activity android:name=".ui.resident.NotificationActivity" android:exported="false"/>
+        <activity android:name=".ui.resident.RepairDetailActivity" android:exported="false"/>
+        <activity android:name=".ui.resident.MediaSelectActivity" android:exported="false"/>
+        <activity android:name=".ui.resident.PostEditActivity" android:exported="false" android:windowSoftInputMode="adjustResize"/>
+        <activity android:name=".ui.resident.PostDetailActivity" android:exported="false" android:windowSoftInputMode="adjustResize"/>
+        <activity android:name=".ui.resident.ImagePreviewActivity" android:exported="false"/>
+        <activity android:name=".ui.resident.VideoFullScreenActivity" android:screenOrientation="landscape" android:theme="@style/Theme.AppCompat.NoActionBar"/>
+        <activity android:name=".ui.resident.HelpPostEditActivity" android:exported="false" android:windowSoftInputMode="adjustResize"/>
+        <activity android:name=".ui.resident.ChatActivity" android:exported="false" android:windowSoftInputMode="adjustResize"/>
+        <activity android:name=".ui.resident.MessageListActivity" android:exported="false"/>
+        <activity android:name=".ui.resident.ResidentProductBrowsingActivity" android:exported="false"/>
+
+        <activity android:name=".ui.resident.ResidentProductDetailActivity" android:exported="false"/>
+        <activity android:name=".ui.resident.ResidentOrdersActivity" android:exported="false"/>
+        <activity android:name=".ui.common.VoteDetailActivity" android:exported="false"/>
+        <activity android:name=".ui.resident.ResidentCompletedOrdersActivity"/>
+        <activity android:name=".ui.resident.ResidentAfterSalesActivity"/>
+        <activity android:name=".ui.resident.ResidentAppealListActivity" android:exported="false" android:label="我的申诉记录"/>
+        <activity android:name=".ui.resident.ResidentAppealDetailActivity" android:exported="false" android:label="申诉详情"/>
+        <activity android:name=".ui.resident.ResidentApplyAfterSalesActivity" android:exported="false" android:windowSoftInputMode="adjustResize"/>
+
+        <activity android:name=".ui.resident.MyDynamicsActivity" android:exported="false" />
+        <activity android:name=".ui.resident.MyHelpActivity" android:exported="false" />
+
+        <activity android:name=".ui.merchant.MerchantAfterSalesListActivity" android:exported="false"/>
+        <activity android:name=".ui.merchant.MerchantAfterSalesDetailActivity" android:exported="false" android:windowSoftInputMode="adjustResize"/>
+        <activity android:name=".ui.admin.MerchantListActivity" android:exported="false"/>
+        <activity android:name=".ui.admin.AdminNotificationManagementActivity" android:title="通知管理" />
+        <activity android:name=".ui.admin.AdminNoticeEditActivity" android:title="编辑通知" android:windowSoftInputMode="adjustResize"/>
+        <activity android:name=".ui.admin.AdminNoticeDetailActivity" android:title="通知详情" />
+        <activity android:name=".ui.resident.ResidentHistoryActivity" android:exported="false"/>
+        <activity android:name=".ui.resident.ResidentChangePasswordActivity" android:exported="false"/>
+        <activity android:name=".ui.resident.HelpPostDetailActivity" android:exported="false"/>
+        <activity android:name=".login.ResidentForgotPasswordActivity" />
+        <activity android:name=".login.MerchantForgotPasswordActivity" />
+        <activity android:name=".ui.resident.PublishReviewActivity" />
+        <activity android:name=".ui.resident.ReviewListActivity" />
+        <activity android:name=".ui.merchant.MerchantRevenueActivity" android:screenOrientation="portrait" android:exported="false"/>
+    </application>
+</manifest>
