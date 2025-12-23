@@ -2,6 +2,7 @@ package com.gxuwz.ccsa.ui.resident;
 
 import android.app.Dialog;
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -44,6 +45,9 @@ public class NotificationFragment extends Fragment {
     private Timer timer;
     private User currentUser;
 
+    // 消息图标
+    private ImageView ivNotice;
+
     // 商品展示相关
     private RecyclerView rvProducts;
     private ProductAdapter productAdapter;
@@ -67,6 +71,43 @@ public class NotificationFragment extends Fragment {
         initProductSection(view);
 
         return view;
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // 每次页面可见时（包括从消息列表返回时），检查未读状态
+        checkUnreadStatus();
+    }
+
+    // 新增：检查未读消息并更新图标颜色
+    private void checkUnreadStatus() {
+        if (currentUser == null || getContext() == null) return;
+
+        new Thread(() -> {
+            AppDatabase db = AppDatabase.getInstance(getContext());
+            // 查询系统通知表中的未读数量
+            int unreadCount = db.notificationDao().getUnreadCount(currentUser.getPhone());
+
+            // 注意：当前 ChatMessage 表没有 isRead 字段，所以暂时只统计系统通知的未读状态。
+            // 如果后续聊天也需要红点提示，需要在数据库添加字段并在此处累加 count。
+
+            if (getActivity() != null) {
+                getActivity().runOnUiThread(() -> {
+                    if (unreadCount > 0) {
+                        // 有未读消息，图标变红
+                        if (ivNotice != null) {
+                            ivNotice.setColorFilter(Color.RED);
+                        }
+                    } else {
+                        // 无未读消息，清除颜色过滤（恢复原图颜色，通常是黑色/灰色）
+                        if (ivNotice != null) {
+                            ivNotice.clearColorFilter();
+                        }
+                    }
+                });
+            }
+        }).start();
     }
 
     private void initBanner(View view) {
@@ -152,19 +193,15 @@ public class NotificationFragment extends Fragment {
         loadProducts();
     }
 
-    // --- 修改点：加载商品时根据用户小区筛选 ---
     private void loadProducts() {
         new Thread(() -> {
             if (getContext() == null) return;
             AppDatabase db = AppDatabase.getInstance(getContext());
 
             List<Product> products;
-            // 如果用户有小区信息，则只查询该小区商家的商品
             if (currentUser != null && !TextUtils.isEmpty(currentUser.getCommunity())) {
                 products = db.productDao().getProductsByCommunity(currentUser.getCommunity());
             } else {
-                // 如果没有用户信息（例如未完全登录或未绑定小区），这里选择显示所有或者不显示
-                // 为了演示效果默认显示所有，实际可根据需求改为 new ArrayList<>()
                 products = db.productDao().getAllProducts();
             }
 
@@ -220,6 +257,9 @@ public class NotificationFragment extends Fragment {
     }
 
     private void initFunctionButtons(View view) {
+        // 绑定图标控件
+        ivNotice = view.findViewById(R.id.iv_notice);
+
         view.findViewById(R.id.ll_notice).setOnClickListener(v -> {
             if (checkUser()) {
                 Intent intent = new Intent(getContext(), NotificationActivity.class);
@@ -242,7 +282,6 @@ public class NotificationFragment extends Fragment {
             }
         });
 
-        // 修改了这里：跳转到 PaymentDashboardActivity (有图的缴费页面)
         view.findViewById(R.id.ll_my_payment).setOnClickListener(v -> {
             if (checkUser()) {
                 Intent intent = new Intent(getContext(), PaymentDashboardActivity.class);
