@@ -98,7 +98,6 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
         holder.layoutBottomBar.setVisibility(View.VISIBLE);
 
         // --- 处理删除按钮逻辑 (非视频模式) ---
-        // 查找是否已经添加过删除按钮，避免重复添加
         View existingDeleteBtn = holder.layoutBottomBar.findViewWithTag("DELETE_BTN");
         if (deleteListener != null && post.type != 2) {
             if (existingDeleteBtn == null) {
@@ -173,17 +172,16 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
                 sideBar.setElevation(10f);
 
                 ImageView btnLike = createSideIcon(context, post.isLiked ? R.drawable.liked : R.drawable.like);
-                ImageView btnFavorite = createSideIcon(context, post.isDisliked ? R.drawable.favorited : R.drawable.favorite);
+                // 已移除：收藏按钮
                 ImageView btnComment = createSideIcon(context, R.drawable.video_comments);
 
                 sideBar.addView(btnLike);
-                sideBar.addView(btnFavorite);
+                // sideBar.addView(btnFavorite); // 移除收藏按钮添加
                 sideBar.addView(btnComment);
 
                 // --- 视频模式下的删除按钮 ---
                 if (deleteListener != null) {
                     ImageView btnDelete = createSideIcon(context, android.R.drawable.ic_menu_delete);
-                    // 这里使用了系统自带的删除图标，如果项目有 ic_delete.png 请替换为 R.drawable.ic_delete
                     btnDelete.setColorFilter(Color.WHITE);
                     btnDelete.setOnClickListener(v -> deleteListener.onDelete(post));
                     sideBar.addView(btnDelete);
@@ -215,21 +213,9 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
                 videoView.setOnCompletionListener(mp -> playIcon.setVisibility(View.VISIBLE));
 
                 btnLike.setOnClickListener(v -> {
-                    if (post.isDisliked) {
-                        post.isDisliked = false;
-                        btnFavorite.setImageResource(R.drawable.favorite);
-                    }
+                    // 仅处理点赞，不再涉及收藏互斥
                     post.isLiked = !post.isLiked;
                     btnLike.setImageResource(post.isLiked ? R.drawable.liked : R.drawable.like);
-                });
-
-                btnFavorite.setOnClickListener(v -> {
-                    if (post.isLiked) {
-                        post.isLiked = false;
-                        btnLike.setImageResource(R.drawable.like);
-                    }
-                    post.isDisliked = !post.isDisliked;
-                    btnFavorite.setImageResource(post.isDisliked ? R.drawable.favorited : R.drawable.favorite);
                 });
 
                 btnComment.setOnClickListener(v -> openDetail(post));
@@ -296,24 +282,10 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
 
     private void bindBottomActions(PostViewHolder holder, Post post) {
         holder.ivLike.setImageResource(post.isLiked ? R.drawable.liked2 : R.drawable.like2);
-        holder.ivDislike.setImageResource(post.isDisliked ? R.drawable.favorited2 : R.drawable.favorite2);
 
         holder.layoutLike.setOnClickListener(v -> {
-            if (post.isDisliked) {
-                post.isDisliked = false;
-                holder.ivDislike.setImageResource(R.drawable.favorite2);
-            }
             post.isLiked = !post.isLiked;
             holder.ivLike.setImageResource(post.isLiked ? R.drawable.liked2 : R.drawable.like2);
-        });
-
-        holder.layoutDislike.setOnClickListener(v -> {
-            if (post.isLiked) {
-                post.isLiked = false;
-                holder.ivLike.setImageResource(R.drawable.like2);
-            }
-            post.isDisliked = !post.isDisliked;
-            holder.ivDislike.setImageResource(post.isDisliked ? R.drawable.favorited2 : R.drawable.favorite2);
         });
 
         holder.layoutComment.setOnClickListener(v -> openDetail(post));
@@ -352,9 +324,9 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
         TextView tvName, tvTime, tvContent, tvCommentCount;
         ImageView ivAvatar;
         FrameLayout mediaContainer;
-        View layoutLike, layoutDislike, layoutComment;
+        View layoutLike, layoutComment; // 已移除 layoutDislike (收藏)
         LinearLayout layoutBottomBar;
-        ImageView ivLike, ivDislike;
+        ImageView ivLike; // 已移除 ivDislike (收藏图标)
 
         public PostViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -365,11 +337,11 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
             ivAvatar = itemView.findViewById(R.id.iv_avatar);
             mediaContainer = itemView.findViewById(R.id.media_container);
             layoutLike = itemView.findViewById(R.id.layout_like);
-            layoutDislike = itemView.findViewById(R.id.layout_dislike);
+            // layoutDislike = itemView.findViewById(R.id.layout_dislike); // 已移除
             layoutComment = itemView.findViewById(R.id.layout_comment);
             layoutBottomBar = itemView.findViewById(R.id.layout_bottom_bar);
             ivLike = itemView.findViewById(R.id.iv_like);
-            ivDislike = itemView.findViewById(R.id.iv_dislike);
+            // ivDislike = itemView.findViewById(R.id.iv_dislike); // 已移除
         }
     }
 }

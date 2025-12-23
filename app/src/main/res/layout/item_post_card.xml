@@ -90,20 +90,6 @@
             </LinearLayout>
 
             <LinearLayout
-                android:id="@+id/layout_dislike"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="match_parent"
-                android:gravity="center"
-                android:background="?attr/selectableItemBackground">
-                <ImageView
-                    android:id="@+id/iv_dislike"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@drawable/dislike"/>
-            </LinearLayout>
-
-            <LinearLayout
                 android:id="@+id/layout_comment"
                 android:layout_width="0dp"
                 android:layout_weight="1"
