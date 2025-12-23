@@ -1,11 +1,13 @@
 package com.gxuwz.ccsa.ui.resident;
 
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast; // 引入 Toast
+import android.widget.Toast;
+import androidx.appcompat.app.AlertDialog; // 引入 AlertDialog
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -58,9 +60,14 @@ public class ResidentOrdersActivity extends AppCompatActivity {
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-        // 修复：传入 null 作为 OnOrderCancelListener。
-        // 如果需要实现取消功能，可以将 null 替换为 new ResidentOrderAdapter.OnOrderCancelListener() { ... }
-        adapter = new ResidentOrderAdapter(null, null);
+        // 【修复关键点】：这里不再传入 null，而是传入一个实现了 OnOrderCancelListener 的匿名内部类
+        adapter = new ResidentOrderAdapter(null, new ResidentOrderAdapter.OnOrderCancelListener() {
+            @Override
+            public void onCancelOrder(Order order) {
+                // 收到 Adapter 的取消点击回调，显示确认弹窗
+                showCancelDialog(order);
+            }
+        });
 
         recyclerView.setAdapter(adapter);
     }
@@ -71,12 +78,48 @@ public class ResidentOrdersActivity extends AppCompatActivity {
         loadData();
     }
 
+    /**
+     * 显示取消确认弹窗
+     */
+    private void showCancelDialog(Order order) {
+        new AlertDialog.Builder(this)
+                .setTitle("提示")
+                .setMessage("确定要取消该订单吗？")
+                .setPositiveButton("确定", (dialog, which) -> {
+                    // 用户点击确定，执行取消操作
+                    cancelOrderInDb(order);
+                })
+                .setNegativeButton("再想想", null)
+                .show();
+    }
+
+    /**
+     * 在数据库中执行取消操作
+     */
+    private void cancelOrderInDb(Order order) {
+        new Thread(() -> {
+            // 1. 修改订单状态
+            order.status = "已取消";
+
+            // 2. 更新数据库
+            db.orderDao().update(order);
+
+            // 3. 回到主线程刷新 UI
+            runOnUiThread(() -> {
+                Toast.makeText(ResidentOrdersActivity.this, "订单已取消", Toast.LENGTH_SHORT).show();
+                loadData(); // 重新加载数据，刷新列表显示
+            });
+        }).start();
+    }
+
     private void loadData() {
         new Thread(() -> {
             List<Order> allOrders = db.orderDao().getOrdersByResident(String.valueOf(userId));
             List<Order> activeOrders = new ArrayList<>();
 
-            // 过滤逻辑：只显示 待接单 和 配送中，排除 已完成
+            // 过滤逻辑：只显示 待接单 和 配送中 (以及刚被取消的)，排除 已完成
+            // 注意：因为 Adapter 中对 "已取消" 状态有灰色显示的逻辑，所以这里保留它在列表中，
+            // 方便用户确认它确实变为了“已取消”。如果不希望显示已取消的，可以在这里加判断。
             if (allOrders != null) {
                 for (Order order : allOrders) {
                     if (!"已完成".equals(order.status)) {
