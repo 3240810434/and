@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast; // 引入 Toast
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -33,7 +34,6 @@ public class ResidentOrdersActivity extends AppCompatActivity {
         TextView btnAfterSales = findViewById(R.id.btn_after_sales);
         ImageView btnBack = findViewById(R.id.btn_back);
 
-        // 返回按钮逻辑（虽然布局里gone了，保留逻辑以防万一）
         if(btnBack != null) {
             btnBack.setOnClickListener(v -> finish());
         }
@@ -58,7 +58,10 @@ public class ResidentOrdersActivity extends AppCompatActivity {
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-        adapter = new ResidentOrderAdapter(null);
+        // 修复：传入 null 作为 OnOrderCancelListener。
+        // 如果需要实现取消功能，可以将 null 替换为 new ResidentOrderAdapter.OnOrderCancelListener() { ... }
+        adapter = new ResidentOrderAdapter(null, null);
+
         recyclerView.setAdapter(adapter);
     }
 

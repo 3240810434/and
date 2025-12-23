@@ -40,7 +40,9 @@ public class ResidentCompletedOrdersActivity extends AppCompatActivity {
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-        adapter = new ResidentOrderAdapter(null);
+        // 修复：传入 null 作为 OnOrderCancelListener，已完成订单不可取消
+        adapter = new ResidentOrderAdapter(null, null);
+
         recyclerView.setAdapter(adapter);
     }
 
@@ -58,7 +60,6 @@ public class ResidentCompletedOrdersActivity extends AppCompatActivity {
             // 过滤逻辑修改：
             // 1. 状态必须是 "已完成"
             // 2. 并且 afterSalesStatus 必须是 0 (无售后)
-            // 这样，申请了售后的订单就会从这里消失，出现在售后页面
             if (allOrders != null) {
                 for (Order order : allOrders) {
                     if ("已完成".equals(order.status) && order.afterSalesStatus == 0) {

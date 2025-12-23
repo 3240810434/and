@@ -31,8 +31,6 @@ public class ResidentAfterSalesActivity extends AppCompatActivity {
         initView();
 
         // 获取当前登录用户ID
-        // 假设你用 SharedPreferencesUtil 或者直接 getSharedPreferences
-        // 这里沿用你 ResidentCompletedOrdersActivity 的获取方式
         userId = getSharedPreferences("user_prefs", MODE_PRIVATE).getLong("user_id", -1);
 
         db = AppDatabase.getInstance(this);
@@ -47,13 +45,16 @@ public class ResidentAfterSalesActivity extends AppCompatActivity {
         ImageView btnBack = findViewById(R.id.btn_back);
         btnBack.setOnClickListener(v -> finish());
 
-        tvEmpty = findViewById(R.id.tv_empty); // 确保布局里有这个ID，没有也没关系，下面有判空
+        tvEmpty = findViewById(R.id.tv_empty);
     }
 
     private void initRecyclerView() {
         recyclerView = findViewById(R.id.recycler_view);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        adapter = new ResidentOrderAdapter(null);
+
+        // 修复：传入 null 作为 OnOrderCancelListener，因为售后页面一般不处理取消订单
+        adapter = new ResidentOrderAdapter(null, null);
+
         recyclerView.setAdapter(adapter);
     }
 
