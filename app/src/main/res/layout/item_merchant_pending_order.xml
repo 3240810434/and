@@ -83,7 +83,7 @@
                         android:id="@+id/tv_physical_spec"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="规格: 大份"
+                        android:text="规格: 默认"
                         android:textSize="12sp"
                         android:textColor="#666666"
                         android:layout_marginTop="2dp"/>
@@ -107,7 +107,7 @@
                         android:id="@+id/tv_service_price_unit"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="基础价: ¥50/小时"
+                        android:text="价格: ¥50/小时"
                         android:textSize="12sp"
                         android:textColor="#666666"
                         android:layout_marginTop="2dp"/>
@@ -125,7 +125,7 @@
                     android:id="@+id/tv_tags"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="标签: 推荐"
+                    android:text="标签"
                     android:background="#F0F8FF"
                     android:paddingHorizontal="4dp"
                     android:paddingVertical="1dp"
@@ -147,15 +147,14 @@
                 android:id="@+id/tv_resident_info"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="张三 13800000000"
+                android:text="联系人信息"
                 android:textSize="13sp"
-                android:textColor="#333333"
-                android:drawablePadding="5dp"/>
+                android:textColor="#333333"/>
             <TextView
                 android:id="@+id/tv_address"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="幸福小区 1栋 101"
+                android:text="地址信息"
                 android:textSize="12sp"
                 android:textColor="#666666"
                 android:layout_marginTop="2dp"/>
@@ -202,7 +201,7 @@
                         android:id="@+id/tv_pay_amount"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="¥ 128.00"
+                        android:text="¥ 0.00"
                         android:textSize="16sp"
                         android:textStyle="bold"
                         android:textColor="#F44336"/>

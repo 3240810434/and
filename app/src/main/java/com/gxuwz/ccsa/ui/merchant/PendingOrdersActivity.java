@@ -73,7 +73,6 @@ public class PendingOrdersActivity extends AppCompatActivity {
         }).start();
     }
 
-    // 处理接单逻辑（封装原逻辑）
     private void handleAcceptOrder(Order order) {
         new Thread(() -> {
             order.status = "配送中";
@@ -85,68 +84,40 @@ public class PendingOrdersActivity extends AppCompatActivity {
         }).start();
     }
 
-    // 【新增】显示取消订单对话框
+    // 显示取消订单对话框
     private void showCancelDialog(Order order) {
         final EditText etReason = new EditText(this);
         etReason.setHint("请输入取消原因（必填）");
 
-        // 设置一点内边距让输入框更好看
+        // 设置输入框边距
         int padding = (int) (16 * getResources().getDisplayMetrics().density);
         etReason.setPadding(padding, padding, padding, padding);
 
-        new AlertDialog.Builder(this)
+        // 创建Dialog对象，这里不要直接链式调用show()，否则无法获取Button
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("取消订单")
                 .setMessage("请填写取消订单的原因：")
                 .setView(etReason)
-                .setPositiveButton("确定", null) // 设置为null以覆盖默认关闭行为
-                .setNegativeButton("返回", (dialog, which) -> dialog.dismiss())
-                .create()
-                .show()
-                // 获取按钮并重写点击事件，实现输入校验
-                .getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-                    String reason = etReason.getText().toString().trim();
-                    if (TextUtils.isEmpty(reason)) {
-                        Toast.makeText(PendingOrdersActivity.this, "必须填写取消原因！", Toast.LENGTH_SHORT).show();
-                    } else {
-                        // 执行取消逻辑
-                        performCancelOrder(order, reason);
-                        // 关闭对话框（需要手动维护引用或在此处无法直接关闭，简单起见重新获取Dialog对象或让Thread处理关闭不合适，
-                        // 这里因为是在OnClickListener内部，无法直接调dialog.dismiss()除非它是final。
-                        // 由于AlertDialog.Builder链式调用问题，建议将Dialog提取为变量，或者强转 v.getContext()。
-                        // 最简单的修复：使用Dialog接口
-                    }
-                    // 注意：这里需要正确关闭Dialog。
-                    // 修正写法：
-                });
-    }
-
-    // 由于lambda作用域问题，上面代码无法直接dismiss dialog，这里重写一个完整的方法
-    private void showCancelDialogFixed(Order order) {
-        final EditText etReason = new EditText(this);
-        etReason.setHint("请输入取消原因（必填）");
-        // ... (padding设置同上)
-
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("确认取消订单？")
-                .setView(etReason)
+                // 设置PositiveButton为null，稍后重新定义OnClickListener以阻止默认的自动关闭行为
                 .setPositiveButton("确定", null)
-                .setNegativeButton("返回", (d, w) -> d.dismiss())
+                .setNegativeButton("返回", (d, which) -> d.dismiss())
                 .create();
 
         dialog.show();
 
+        // 获取确定按钮并设置点击事件，进行非空校验
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             String reason = etReason.getText().toString().trim();
             if (TextUtils.isEmpty(reason)) {
                 Toast.makeText(PendingOrdersActivity.this, "必须填写取消原因！", Toast.LENGTH_SHORT).show();
-                return;
+            } else {
+                dialog.dismiss();
+                performCancelOrder(order, reason);
             }
-            dialog.dismiss();
-            performCancelOrder(order, reason);
         });
     }
 
-    // 实际上我们在 loadData 里调用的是 showCancelDialog，所以替换为这个实现：
+    // 执行取消逻辑：更新订单状态 + 发送通知
     private void performCancelOrder(Order order, String reason) {
         new Thread(() -> {
             // 1. 更新订单状态
@@ -168,13 +139,8 @@ public class PendingOrdersActivity extends AppCompatActivity {
 
             runOnUiThread(() -> {
                 Toast.makeText(PendingOrdersActivity.this, "订单已取消", Toast.LENGTH_SHORT).show();
-                loadData(); // 刷新列表，订单将消失（因为loadData只查‘待接单’）
+                loadData(); // 刷新列表，该订单将从待接单列表中消失
             });
         }).start();
-    }
-
-    // 重写 showCancelDialog 以匹配 adapter 调用
-    private void showCancelDialog(Order order) {
-        showCancelDialogFixed(order);
     }
 }
