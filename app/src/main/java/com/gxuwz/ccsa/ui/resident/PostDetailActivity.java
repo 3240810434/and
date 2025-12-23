@@ -44,12 +44,12 @@ public class PostDetailActivity extends AppCompatActivity {
     private List<Comment> commentList = new ArrayList<>();
     private EditText etComment;
 
-    // Body Views
+    // Body Views (普通帖子用户信息)
     private TextView tvName, tvContent;
     private ImageView ivAvatar, ivBack;
     private LinearLayout llBodyUserInfo;
 
-    // Header Views (For Video)
+    // Header Views (视频帖子用户信息)
     private LinearLayout llHeaderUserInfo;
     private ImageView ivHeaderAvatar;
     private TextView tvHeaderName;
@@ -69,8 +69,13 @@ public class PostDetailActivity extends AppCompatActivity {
         currentUser = (User) getIntent().getSerializableExtra("user");
 
         initViews();
-        setupPostContent();
+        setupPostContent(); // 先显示传递过来的基础内容
         setupComments();
+
+        // 【核心修复】加载最新的作者信息，覆盖可能过时的 Intent 数据
+        if (post != null) {
+            loadLatestAuthorInfo(post.userId);
+        }
     }
 
     private void initViews() {
@@ -111,57 +116,92 @@ public class PostDetailActivity extends AppCompatActivity {
         });
     }
 
+    // 【新增方法】从数据库获取最新用户信息并刷新界面
+    private void loadLatestAuthorInfo(int userId) {
+        new Thread(() -> {
+            User author = AppDatabase.getInstance(this).userDao().getUserById(userId);
+            if (author != null) {
+                runOnUiThread(() -> {
+                    // 更新当前内存中的 post 对象属性，防止后续逻辑使用旧数据
+                    post.userName = author.getName();
+                    post.userAvatar = author.getAvatar();
+
+                    // 刷新 UI 显示
+                    RequestOptions options = RequestOptions.bitmapTransform(new RoundedCorners(100));
+
+                    if (post.type == 2) {
+                        // 视频模式更新 Header
+                        tvHeaderName.setText(author.getName());
+                        Glide.with(PostDetailActivity.this)
+                                .load(author.getAvatar())
+                                .apply(options)
+                                .placeholder(R.drawable.lan) // 设置占位图
+                                .error(R.drawable.lan)       // 设置错误图
+                                .into(ivHeaderAvatar);
+                    } else {
+                        // 普通模式更新 Body
+                        tvName.setText(author.getName());
+                        Glide.with(PostDetailActivity.this)
+                                .load(author.getAvatar())
+                                .apply(options)
+                                .placeholder(R.drawable.lan)
+                                .error(R.drawable.lan)
+                                .into(ivAvatar);
+                    }
+                });
+            }
+        }).start();
+    }
+
     private void setupPostContent() {
         if (post == null) return;
 
-        // 基础内容
         tvContent.setText(post.content);
 
-        // 加载头像逻辑
+        // 初始加载（使用 Intent 数据作为缓冲，防止白屏，随后会被 loadLatestAuthorInfo 覆盖）
         RequestOptions options = RequestOptions.bitmapTransform(new RoundedCorners(100));
 
-        // 1.1 根据帖子类型决定用户信息显示位置
         if (post.type == 2) {
-            // === 视频帖子：用户信息在右上角 ===
             llBodyUserInfo.setVisibility(View.GONE);
             llHeaderUserInfo.setVisibility(View.VISIBLE);
-
             tvHeaderName.setText(post.userName);
-            Glide.with(this).load(post.userAvatar).apply(options).into(ivHeaderAvatar);
+            Glide.with(this)
+                    .load(post.userAvatar)
+                    .apply(options)
+                    .placeholder(R.drawable.lan)
+                    .error(R.drawable.lan)
+                    .into(ivHeaderAvatar);
         } else {
-            // === 其他帖子：用户信息在内容上方 ===
             llHeaderUserInfo.setVisibility(View.GONE);
             llBodyUserInfo.setVisibility(View.VISIBLE);
-
             tvName.setText(post.userName);
-            Glide.with(this).load(post.userAvatar).apply(options).into(ivAvatar);
+            Glide.with(this)
+                    .load(post.userAvatar)
+                    .apply(options)
+                    .placeholder(R.drawable.lan)
+                    .error(R.drawable.lan)
+                    .into(ivAvatar);
         }
 
-        // 媒体处理
+        // 媒体处理逻辑不变
         if (post.mediaList != null && !post.mediaList.isEmpty()) {
             if (post.type == 2) {
-                // === 视频 ===
+                // ... 视频逻辑 ...
                 viewPager.setVisibility(View.GONE);
                 indicatorContainer.setVisibility(View.GONE);
                 videoContainer.setVisibility(View.VISIBLE);
 
                 String videoUrl = post.mediaList.get(0).url;
                 videoView.setVideoPath(videoUrl);
-
-                // 1.2 视频居中显示，准备好后开始播放
                 videoView.setOnPreparedListener(mp -> {
                     mp.setLooping(true);
                     mp.setVideoScalingMode(MediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT);
                     videoView.start();
                 });
-
-                // 点击暂停/播放
                 videoView.setOnClickListener(v -> {
                     if (videoView.isPlaying()) videoView.pause();
                     else videoView.start();
                 });
-
-                // 1.2 点击全屏图标
                 btnFullScreen.setOnClickListener(v -> {
                     Intent intent = new Intent(this, VideoFullScreenActivity.class);
                     intent.putExtra("video_url", videoUrl);
@@ -169,14 +209,11 @@ public class PostDetailActivity extends AppCompatActivity {
                 });
 
             } else {
-                // === 图片 ===
+                // ... 图片逻辑 ...
                 videoContainer.setVisibility(View.GONE);
                 viewPager.setVisibility(View.VISIBLE);
-
-                // 1.4 传递 mediaList 用于点击放大
                 ImagePagerAdapter imageAdapter = new ImagePagerAdapter(post.mediaList);
                 viewPager.setAdapter(imageAdapter);
-
                 setupIndicators(post.mediaList.size());
                 viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
                     @Override
@@ -192,7 +229,6 @@ public class PostDetailActivity extends AppCompatActivity {
             indicatorContainer.setVisibility(View.GONE);
         }
 
-        // 保存浏览历史
         if (currentUser != null) {
             saveHistory();
         }
@@ -201,26 +237,14 @@ public class PostDetailActivity extends AppCompatActivity {
     private void saveHistory() {
         new Thread(() -> {
             AppDatabase db = AppDatabase.getInstance(this);
-            // 先删除旧的记录，保证最新浏览排在最前 (1 代表 Post 类型)
             db.historyDao().deleteRecord(currentUser.getId(), post.id, 1);
-
-            String cover = post.userAvatar; // 默认用头像
+            String cover = post.userAvatar;
             if (post.mediaList != null && !post.mediaList.isEmpty()) {
-                // 如果有图片或视频封面，则使用第一张媒体图
                 cover = post.mediaList.get(0).url;
             }
-
-            // 确保标题不为空
             String title = !TextUtils.isEmpty(post.content) ? post.content : post.userName + "的动态";
-
             HistoryRecord record = new HistoryRecord(
-                    currentUser.getId(),
-                    post.id,
-                    1, // 1 for Post
-                    title,
-                    cover,
-                    post.userName,
-                    System.currentTimeMillis()
+                    currentUser.getId(), post.id, 1, title, cover, post.userName, System.currentTimeMillis()
             );
             db.historyDao().insert(record);
         }).start();
@@ -254,29 +278,19 @@ public class PostDetailActivity extends AppCompatActivity {
 
     private void setupComments() {
         adapter = new CommentAdapter(this, commentList);
-
-        // 【新增】设置当前用户的ID，以便Adapter中判断是否可以删除评论
         if (currentUser != null) {
             adapter.setCurrentUserId(currentUser.getId());
         }
-
-        // 【新增】实现点击回复的回调逻辑
         adapter.setOnReplyListener(comment -> {
-            // 1. 设置输入框内容为 "回复 xxx: "
             String replyPrefix = "回复 " + comment.userName + ": ";
             etComment.setText(replyPrefix);
-
-            // 2. 将光标移到文本末尾
             etComment.setSelection(etComment.getText().length());
-
-            // 3. 获取焦点并弹出软键盘
             etComment.requestFocus();
             InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
             if (imm != null) {
                 imm.showSoftInput(etComment, InputMethodManager.SHOW_IMPLICIT);
             }
         });
-
         rvComments.setLayoutManager(new LinearLayoutManager(this));
         rvComments.setAdapter(adapter);
         loadComments();
@@ -317,7 +331,6 @@ public class PostDetailActivity extends AppCompatActivity {
             AppDatabase.getInstance(this).postDao().insertComment(comment);
             runOnUiThread(() -> {
                 etComment.setText("");
-                // 发送完成后关闭键盘
                 InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
                 if (imm != null) {
                     imm.hideSoftInputFromWindow(etComment.getWindowToken(), 0);
@@ -343,12 +356,9 @@ public class PostDetailActivity extends AppCompatActivity {
         @Override
         public void onBindViewHolder(@NonNull ImageViewHolder holder, int position) {
             Glide.with(holder.imageView.getContext()).load(mediaList.get(position).url).into(holder.imageView);
-
-            // 1.4 点击图片放大 (跳转至 ImagePreviewActivity)
             holder.imageView.setOnClickListener(v -> {
                 ArrayList<String> urls = new ArrayList<>();
                 for (PostMedia m : mediaList) urls.add(m.url);
-
                 Intent intent = new Intent(PostDetailActivity.this, ImagePreviewActivity.class);
                 intent.putStringArrayListExtra("images", urls);
                 intent.putExtra("position", position);

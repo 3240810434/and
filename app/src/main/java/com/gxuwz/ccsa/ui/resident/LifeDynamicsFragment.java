@@ -51,7 +51,6 @@ public class LifeDynamicsFragment extends Fragment {
         if (fabAdd != null) {
             fabAdd.setOnClickListener(v -> {
                 Intent intent = new Intent(getActivity(), MediaSelectActivity.class);
-                // 确保传递最新的 currentUser
                 if (currentUser != null) {
                     intent.putExtra("user", currentUser);
                 }
@@ -78,23 +77,21 @@ public class LifeDynamicsFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        // 页面恢复可见时（如从发布页返回），刷新用户和列表
+        // 页面从后台回到前台（或从其他Activity返回）时刷新
         updateCurrentUser();
         loadPosts();
     }
 
-    // 【核心修复】处理 Tab 切换时的刷新（解决修改资料后切回来不刷新的问题）
     @Override
     public void onHiddenChanged(boolean hidden) {
         super.onHiddenChanged(hidden);
+        // 页面在 Fragment 之间切换（如底部导航栏切换）时刷新
         if (!hidden) {
-            // 当 Fragment 从隐藏变显示时
             updateCurrentUser();
             loadPosts();
         }
     }
 
-    // 从 Activity 获取最新的 User 对象，并同步给 Adapter
     private void updateCurrentUser() {
         if (getActivity() instanceof ResidentMainActivity) {
             currentUser = ((ResidentMainActivity) getActivity()).getUser();
@@ -108,16 +105,20 @@ public class LifeDynamicsFragment extends Fragment {
         new Thread(() -> {
             if (getContext() == null) return;
             AppDatabase db = AppDatabase.getInstance(getContext());
+
+            // 1. 获取所有帖子
             List<Post> posts = db.postDao().getAllPosts();
 
-            // 居民修改信息同步：遍历帖子，查询最新的用户信息覆盖旧数据
+            // 2. 【核心】遍历帖子，查询最新的用户信息覆盖旧数据
+            // 这步是解决改名/改头像后列表不刷新的关键
             for (Post p : posts) {
                 p.mediaList = db.postDao().getMediaForPost(p.id);
                 p.commentCount = db.postDao().getCommentCount(p.id);
 
-                // 根据 userId 实时查库，确保获取的是修改后的头像和昵称
+                // 根据帖子的 userId 去 User 表查最新的 User 对象
                 User latestUser = db.userDao().getUserById(p.userId);
                 if (latestUser != null) {
+                    // 覆盖 Post 对象中旧的 userName 和 userAvatar
                     p.userName = latestUser.getName();
                     p.userAvatar = latestUser.getAvatar();
                 }
