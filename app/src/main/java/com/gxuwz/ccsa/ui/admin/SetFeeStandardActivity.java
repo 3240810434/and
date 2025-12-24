@@ -29,7 +29,7 @@ import java.util.concurrent.Executors;
 
 public class SetFeeStandardActivity extends AppCompatActivity {
 
-    private static final String TAG = "SetFeeStandardActivity"; // 新增日志标签
+    private static final String TAG = "SetFeeStandardActivity";
     private String community;
     private EditText etPropertyServiceFee;
     private EditText etMaintenanceFund;
@@ -47,21 +47,25 @@ public class SetFeeStandardActivity extends AppCompatActivity {
     private EditText etEffectiveDate;
     private Button btnSave;
     private Button btnReset;
-    private Button btnRoomArea;
+    // 使用 TextView 作为 Toolbar 上的按钮
+    private TextView btnRoomAreaNav;
+    private TextView tvToolbarTitle;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_set_fee_standard);
 
-        // 初始化Toolbar并设置为ActionBar
+        // 初始化Toolbar
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        // 添加返回按钮（符合ActionBar常规交互）
+        // 添加返回按钮
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setHomeButtonEnabled(true);
+            // 禁用默认标题，因为我们使用了自定义的 TextView
+            getSupportActionBar().setDisplayShowTitleEnabled(false);
         }
 
         // 获取小区信息
@@ -78,10 +82,10 @@ public class SetFeeStandardActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        // ActionBar标题设置
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayShowCustomEnabled(true);
-            getSupportActionBar().setTitle(community + " - 物业费标准设置");
+        // 初始化 Toolbar 上的自定义标题
+        tvToolbarTitle = findViewById(R.id.tv_toolbar_title);
+        if (tvToolbarTitle != null) {
+            tvToolbarTitle.setText(community + " - 物业费标准");
         }
 
         // 初始化视图
@@ -102,26 +106,19 @@ public class SetFeeStandardActivity extends AppCompatActivity {
         btnSave = findViewById(R.id.btn_save);
         btnReset = findViewById(R.id.btn_reset);
 
-        // 创建标题栏右侧按钮
-        btnRoomArea = new Button(this);
-        btnRoomArea.setText("房屋面积信息");
-        btnRoomArea.setTextSize(14);
-        btnRoomArea.setTextColor(getResources().getColor(android.R.color.white));
-        btnRoomArea.setBackgroundColor(getResources().getColor(android.R.color.transparent));
-
-        // 设置自定义视图到ActionBar
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setCustomView(btnRoomArea);
-        }
+        // 获取 Toolbar 中的"房屋面积信息"按钮
+        btnRoomAreaNav = findViewById(R.id.btn_room_area_nav);
     }
 
     private void setupListeners() {
         // 房屋面积信息按钮点击事件
-        btnRoomArea.setOnClickListener(v -> {
-            android.content.Intent intent = new android.content.Intent(SetFeeStandardActivity.this, RoomAreaManagementActivity.class);
-            intent.putExtra("community", community);
-            startActivity(intent);
-        });
+        if (btnRoomAreaNav != null) {
+            btnRoomAreaNav.setOnClickListener(v -> {
+                android.content.Intent intent = new android.content.Intent(SetFeeStandardActivity.this, RoomAreaManagementActivity.class);
+                intent.putExtra("community", community);
+                startActivity(intent);
+            });
+        }
 
         // 保存按钮点击事件
         btnSave.setOnClickListener(v -> saveFeeStandard());
@@ -230,7 +227,7 @@ public class SetFeeStandardActivity extends AppCompatActivity {
             return;
         }
 
-        // 验证日期格式是否为yyyy-MM（添加Locale避免格式异常）
+        // 验证日期格式是否为yyyy-MM
         if (!isValidMonthFormat(dateStr)) {
             Toast.makeText(this, "日期格式错误，请使用yyyy-MM格式", Toast.LENGTH_SHORT).show();
             return;
@@ -292,9 +289,8 @@ public class SetFeeStandardActivity extends AppCompatActivity {
         }
     }
 
-    // 保存到数据库的方法（原有逻辑保持不变）
+    // 保存到数据库的方法
     private void saveToDatabase(String dateStr) throws ParseException {
-        // 此处保持原有保存逻辑不变
         ExecutorService executor = Executors.newSingleThreadExecutor();
         executor.execute(() -> {
             try {
@@ -374,7 +370,7 @@ public class SetFeeStandardActivity extends AppCompatActivity {
         }
     }
 
-    // 获取月份的最后一天（优化异常处理）
+    // 获取月份的最后一天
     private String getLastDayOfMonth(String yearMonth) {
         try {
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM", Locale.getDefault());
@@ -389,14 +385,7 @@ public class SetFeeStandardActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * 核心新增：为小区所有住户生成缴费账单
-     * @param db 数据库实例
-     * @param standardId 物业费标准ID
-     * @param standard 物业费标准对象
-     * @param periodStart 账单周期开始日期（yyyy-MM-dd）
-     * @param periodEnd 账单周期结束日期（yyyy-MM-dd）
-     */
+    // 为小区所有住户生成缴费账单
     private void generateBillsForAllResidents(AppDatabase db, long standardId,
                                               PropertyFeeStandard standard,
                                               String periodStart, String periodEnd) {
@@ -415,7 +404,7 @@ public class SetFeeStandardActivity extends AppCompatActivity {
             // 2. 为每个房屋生成账单
             int successCount = 0;
             for (RoomArea room : roomAreas) {
-                // 获取房屋对应的住户（通过小区+楼栋+房号关联）
+                // 获取房屋对应的住户
                 User resident = db.userDao().getByRoom(community, room.getBuilding(), room.getRoomNumber());
                 if (resident == null || resident.getPhone() == null) {
                     Log.w(TAG, "房屋[" + room.getBuilding() + "-" + room.getRoomNumber() + "]未绑定住户，跳过账单生成");
@@ -426,7 +415,7 @@ public class SetFeeStandardActivity extends AppCompatActivity {
                 double totalAmount = calculateTotalFee(standard, room, room.getRoomNumber());
                 Log.d(TAG, "房屋[" + room.getBuilding() + "-" + room.getRoomNumber() + "]费用计算结果：" + totalAmount);
 
-                // 4. 创建账单对象（状态0：未缴）
+                // 4. 创建账单对象
                 PropertyFeeBill bill = new PropertyFeeBill(
                         community,
                         room.getBuilding(),
@@ -452,28 +441,22 @@ public class SetFeeStandardActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * 新增：根据房屋信息和收费标准计算总费用
-     * @param standard 收费标准
-     * @param room 房屋信息（含面积）
-     * @param roomNumber 房号（用于提取楼层）
-     * @return 总费用（保留两位小数）
-     */
+    // 根据房屋信息和收费标准计算总费用
     private double calculateTotalFee(PropertyFeeStandard standard, RoomArea room, String roomNumber) {
         double total = 0;
         double area = room.getArea();
-        int floor = extractFloorFromRoomNumber(roomNumber); // 提取楼层
+        int floor = extractFloorFromRoomNumber(roomNumber);
 
-        // 1. 物业服务费（每平米费用 × 房屋面积）
+        // 1. 物业服务费
         total += standard.getPropertyServiceFeePerSquare() * area;
-        // 2. 日常维修资金（固定费用）
+        // 2. 日常维修资金
         total += standard.getDailyMaintenanceFund();
-        // 3. 水电公摊费（每平米费用 × 房屋面积）
+        // 3. 水电公摊费
         total += standard.getUtilityShareFeePerSquare() * area;
-        // 4. 垃圾处理费（固定费用）
+        // 4. 垃圾处理费
         total += standard.getGarbageFee();
 
-        // 5. 电梯费（按楼层区间计算）
+        // 5. 电梯费
         if (floor >= standard.getElevatorFloorStart()) {
             if (floor <= standard.getElevatorFloorEnd()) {
                 total += standard.getElevatorFee();
@@ -482,7 +465,7 @@ public class SetFeeStandardActivity extends AppCompatActivity {
             }
         }
 
-        // 6. 加压费（按楼层区间计算）
+        // 6. 加压费
         if (floor >= standard.getPressureFloorStart() && standard.getPressureFloorStart() > 0) {
             if (floor <= standard.getPressureFloorEnd()) {
                 total += standard.getPressureFee();
@@ -491,28 +474,21 @@ public class SetFeeStandardActivity extends AppCompatActivity {
             }
         }
 
-        // 保留两位小数（避免浮点精度问题）
         return Math.round(total * 100.0) / 100.0;
     }
 
-    /**
-     * 新增：从房号中提取楼层（如"1001"→10，"302"→3）
-     * @param roomNumber 房号
-     * @return 楼层（解析失败返回1楼）
-     */
+    // 从房号中提取楼层
     private int extractFloorFromRoomNumber(String roomNumber) {
         try {
             if (roomNumber.length() >= 3) {
-                // 截取最后两位之前的字符作为楼层（兼容2位房号+多位楼层）
                 String floorStr = roomNumber.substring(0, roomNumber.length() - 2);
                 return Integer.parseInt(floorStr);
             } else if (roomNumber.length() == 2) {
-                // 两位房号默认1楼（如"01"→1）
                 return 1;
             }
         } catch (NumberFormatException e) {
             Log.e(TAG, "解析楼层失败，房号：" + roomNumber, e);
         }
-        return 1; // 默认1楼（无电梯/加压费）
+        return 1;
     }
 }
