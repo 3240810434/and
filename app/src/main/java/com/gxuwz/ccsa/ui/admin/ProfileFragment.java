@@ -7,8 +7,8 @@ import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -25,8 +25,8 @@ import java.util.concurrent.Executors;
 public class ProfileFragment extends Fragment {
 
     private TextView tvAdminAccount;
-    private Button btnChangePassword;
-    private Button btnLogout;
+    private ImageView btnChangePassword; // 类型改为 ImageView
+    // private Button btnLogout; // 已删除
     private String adminAccount;
     private AppDatabase db;
 
@@ -56,27 +56,21 @@ public class ProfileFragment extends Fragment {
 
     private void initViews(View view) {
         tvAdminAccount = view.findViewById(R.id.tv_admin_account);
+        // ID保持不变，但强转类型变为 ImageView
         btnChangePassword = view.findViewById(R.id.btn_change_password);
-        btnLogout = view.findViewById(R.id.btn_logout);
+        // btnLogout = view.findViewById(R.id.btn_logout); // 已移除
 
         if (adminAccount != null) {
-            // 修改此处：增加“账号：”前缀，使显示更清晰
+            // 增加“账号：”前缀
             tvAdminAccount.setText("账号：" + adminAccount);
         }
     }
 
     private void setupListeners() {
-        // 修改密码
+        // 修改密码点击事件
         btnChangePassword.setOnClickListener(v -> showChangePasswordDialog());
 
-        // 退出登录
-        btnLogout.setOnClickListener(v -> {
-            // 跳转回登录选择页面
-            Intent intent = new Intent(getActivity(), LoginActivity.class);
-            // 清空栈顶，防止用户按返回键回来
-            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(intent);
-        });
+        // 退出登录按钮已删除
     }
 
     private void showChangePasswordDialog() {
@@ -146,8 +140,11 @@ public class ProfileFragment extends Fragment {
                         getActivity().runOnUiThread(() -> {
                             Toast.makeText(getContext(), "密码修改成功，请重新登录", Toast.LENGTH_SHORT).show();
                             dialog.dismiss();
-                            // 修改成功后强制退出
-                            btnLogout.performClick();
+
+                            // 密码修改成功后，直接执行退出登录逻辑跳转回登录页
+                            Intent intent = new Intent(getActivity(), LoginActivity.class);
+                            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
+                            startActivity(intent);
                         });
                     }
                 } else {
