@@ -19,10 +19,10 @@ public class App extends Application {
     // 初始化默认管理员账号
     private void initDefaultAdmin() {
         // 0. 悦景小区 (您代码里的默认账号)
-        checkAndInsertAdmin("1", "1", "悦景小区");
+        checkAndInsertAdmin("123", "123", "悦景小区");
 
         // 1. 梧桐小区
-        checkAndInsertAdmin("11", "11", "梧桐小区");
+        checkAndInsertAdmin("1234", "1234", "梧桐小区");
 
         // 2. 阳光小区
         checkAndInsertAdmin("111", "111", "阳光小区");
