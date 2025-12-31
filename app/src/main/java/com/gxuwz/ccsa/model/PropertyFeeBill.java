@@ -18,20 +18,13 @@ public class PropertyFeeBill {
     private String periodEnd;
     private long standardId;
     private Date paymentTime;
+    // 新增创建时间字段（解决构造函数参数问题）
     private long createTime;
 
-    // 新增：账单所属年份和月份，用于筛选
-    private String year;
-    private String month;
-
-    // 无参构造函数
-    public PropertyFeeBill() {
-    }
-
-    // 更新后的构造函数，包含 year 和 month
+    // 添加完整的构造函数
     public PropertyFeeBill(String community, String building, String roomNumber, String phone,
                            double totalAmount, String periodStart, String periodEnd,
-                           int status, long standardId, long createTime, String year, String month) {
+                           int status, long standardId, long createTime) {
         this.community = community;
         this.building = building;
         this.roomNumber = roomNumber;
@@ -42,8 +35,6 @@ public class PropertyFeeBill {
         this.status = status;
         this.standardId = standardId;
         this.createTime = createTime;
-        this.year = year;
-        this.month = month;
     }
 
     // 所有getter和setter方法...
@@ -82,11 +73,4 @@ public class PropertyFeeBill {
 
     public long getCreateTime() { return createTime; }
     public void setCreateTime(long createTime) { this.createTime = createTime; }
-
-    // 新增的方法
-    public String getYear() { return year; }
-    public void setYear(String year) { this.year = year; }
-
-    public String getMonth() { return month; }
-    public void setMonth(String month) { this.month = month; }
 }
