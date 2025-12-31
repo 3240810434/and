@@ -2,11 +2,8 @@ package com.gxuwz.ccsa.ui.resident;
 
 import android.app.Dialog;
 import android.content.Context;
-import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.view.Gravity;
-import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
@@ -27,17 +24,21 @@ public class ResidentFilterDialog extends Dialog {
 
     private Context context;
     private OnFilterListener listener;
+
     private GridLayout yearContainer;
     private GridLayout monthContainer;
-    private List<CheckBox> yearCheckBoxes = new ArrayList<>();
-    private List<CheckBox> monthCheckBoxes = new ArrayList<>();
 
-    // 固定的年份和月份数据
-    private final List<String> years = Arrays.asList("2023", "2024", "2025", "2026", "2027");
-    private final List<String> months = Arrays.asList("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12");
+    // 年份数据 (2023-2027)
+    private List<String> yearList = Arrays.asList("2023", "2024", "2025", "2026", "2027");
+    // 月份数据
+    private List<String> monthList = Arrays.asList("01", "02", "03", "04", "05", "06",
+            "07", "08", "09", "10", "11", "12");
+
+    private List<CheckBox> yearCheckboxes = new ArrayList<>();
+    private List<CheckBox> monthCheckboxes = new ArrayList<>();
 
     public interface OnFilterListener {
-        void onConfirm(FilterData filterData);
+        void onFilterApplied(FilterData filterData);
     }
 
     public ResidentFilterDialog(@NonNull Context context) {
@@ -54,85 +55,91 @@ public class ResidentFilterDialog extends Dialog {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.dialog_resident_filter);
 
-        // 设置底部弹出样式
+        setupDialog();
+        initViews();
+        setupCheckboxes();
+        setupListeners();
+    }
+
+    private void setupDialog() {
         Window window = getWindow();
         if (window != null) {
-            window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            window.setBackgroundDrawableResource(android.R.color.transparent);
+            window.setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.WRAP_CONTENT);
             window.setGravity(Gravity.BOTTOM);
-            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            window.setWindowAnimations(R.style.BottomDialogAnimation); // 需确保style存在，或者移除这行
         }
-
-        initViews();
     }
 
     private void initViews() {
         yearContainer = findViewById(R.id.year_container);
         monthContainer = findViewById(R.id.month_container);
-
-        // 动态添加年份选项
-        for (String year : years) {
-            CheckBox cb = createCheckBox(year + "年", year);
-            yearContainer.addView(cb);
-            yearCheckBoxes.add(cb);
-        }
-
-        // 动态添加月份选项
-        for (String month : months) {
-            CheckBox cb = createCheckBox(month + "月", month); // tag存纯数字
-            monthContainer.addView(cb);
-            monthCheckBoxes.add(cb);
-        }
-
-        findViewById(R.id.tv_close).setOnClickListener(v -> dismiss());
-
-        findViewById(R.id.btn_reset).setOnClickListener(v -> {
-            for (CheckBox cb : yearCheckBoxes) cb.setChecked(false);
-            for (CheckBox cb : monthCheckBoxes) cb.setChecked(false);
-        });
-
-        findViewById(R.id.btn_confirm).setOnClickListener(v -> {
-            FilterData data = new FilterData();
-
-            List<String> selectedYears = new ArrayList<>();
-            for (CheckBox cb : yearCheckBoxes) {
-                if (cb.isChecked()) selectedYears.add((String) cb.getTag());
-            }
-            data.setSelectedYears(selectedYears);
-
-            List<String> selectedMonths = new ArrayList<>();
-            for (CheckBox cb : monthCheckBoxes) {
-                if (cb.isChecked()) {
-                    // 补齐为两位数，例如 "1" -> "01"，以便后续匹配
-                    String m = (String) cb.getTag();
-                    if (m.length() == 1) m = "0" + m;
-                    selectedMonths.add(m);
-                }
-            }
-            data.setSelectedMonths(selectedMonths);
-
-            if (listener != null) {
-                listener.onConfirm(data);
-            }
-            dismiss();
-        });
     }
 
-    private CheckBox createCheckBox(String text, String tag) {
-        CheckBox cb = new CheckBox(context);
-        cb.setText(text);
-        cb.setTag(tag);
-        cb.setTextSize(12);
-        cb.setBackgroundResource(R.drawable.checkbox_selector); // 需确保有此背景selector，或使用系统默认
-        cb.setButtonDrawable(null); // 去掉默认勾选框图标
-        cb.setPadding(20, 10, 20, 10);
-        cb.setGravity(Gravity.CENTER);
+    private void setupCheckboxes() {
+        // 设置年份复选框
+        for (String year : yearList) {
+            CheckBox checkBox = createCheckbox(year);
+            yearContainer.addView(checkBox);
+            yearCheckboxes.add(checkBox);
+        }
+
+        // 设置月份复选框
+        for (String month : monthList) {
+            CheckBox checkBox = createCheckbox(month + "月");
+            monthContainer.addView(checkBox);
+            monthCheckboxes.add(checkBox);
+        }
+    }
+
+    private CheckBox createCheckbox(String text) {
+        CheckBox checkBox = new CheckBox(context);
+        checkBox.setText(text);
+        checkBox.setTextSize(14);
+        checkBox.setPadding(10, 10, 10, 10);
 
         GridLayout.LayoutParams params = new GridLayout.LayoutParams();
-        params.width = 0;
-        params.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
-        params.setMargins(8, 8, 8, 8);
-        cb.setLayoutParams(params);
+        params.setMargins(10, 5, 10, 5);
+        params.width = GridLayout.LayoutParams.WRAP_CONTENT;
+        params.height = GridLayout.LayoutParams.WRAP_CONTENT;
+        checkBox.setLayoutParams(params);
 
-        return cb;
+        // 使用通用的复选框样式
+        checkBox.setButtonDrawable(R.drawable.checkbox_selector);
+        return checkBox;
+    }
+
+    private void setupListeners() {
+        findViewById(R.id.tv_close).setOnClickListener(v -> dismiss());
+        findViewById(R.id.btn_reset).setOnClickListener(v -> resetFilters());
+        findViewById(R.id.btn_confirm).setOnClickListener(v -> applyFilters());
+    }
+
+    private void resetFilters() {
+        for (CheckBox cb : yearCheckboxes) cb.setChecked(false);
+        for (CheckBox cb : monthCheckboxes) cb.setChecked(false);
+    }
+
+    private void applyFilters() {
+        FilterData filterData = new FilterData();
+
+        List<String> selectedYears = new ArrayList<>();
+        for (CheckBox cb : yearCheckboxes) {
+            if (cb.isChecked()) selectedYears.add(cb.getText().toString());
+        }
+        filterData.setSelectedYears(selectedYears);
+
+        List<String> selectedMonths = new ArrayList<>();
+        for (int i = 0; i < monthCheckboxes.size(); i++) {
+            if (monthCheckboxes.get(i).isChecked()) {
+                selectedMonths.add(monthList.get(i)); // 保存数字格式 "01", "02" 等
+            }
+        }
+        filterData.setSelectedMonths(selectedMonths);
+
+        if (listener != null) {
+            listener.onFilterApplied(filterData);
+        }
+        dismiss();
     }
 }

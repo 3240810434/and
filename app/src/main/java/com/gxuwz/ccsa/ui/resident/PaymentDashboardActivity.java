@@ -21,16 +21,18 @@ import com.gxuwz.ccsa.adapter.PaymentRecordAdapter;
 import com.gxuwz.ccsa.db.AppDatabase;
 import com.gxuwz.ccsa.model.FilterData;
 import com.gxuwz.ccsa.model.PaymentRecord;
-import com.gxuwz.ccsa.model.PropertyFeeBill;
 import com.gxuwz.ccsa.model.User;
 import com.gxuwz.ccsa.util.SharedPreferencesUtil;
 
 import org.json.JSONObject;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public class PaymentDashboardActivity extends AppCompatActivity {
@@ -38,14 +40,12 @@ public class PaymentDashboardActivity extends AppCompatActivity {
     private PieChart pieChart;
     private RecyclerView recyclerView;
     private TextView tvTotalYearly;
-    private TextView tvFilter;
+    private TextView tvFilter; // 筛选按钮
     private PaymentRecordAdapter adapter;
     private User currentUser;
 
     // 原始数据
     private List<PaymentRecord> allRecords = new ArrayList<>();
-    // 账单数据映射 Map<BillId, PropertyFeeBill>
-    private Map<Long, PropertyFeeBill> billMap = new HashMap<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,16 +61,16 @@ public class PaymentDashboardActivity extends AppCompatActivity {
         pieChart = findViewById(R.id.chart_pie);
         recyclerView = findViewById(R.id.recycler_view_records);
         tvTotalYearly = findViewById(R.id.tv_total_yearly);
-
-        // 确保你的layout文件中有这个ID的TextView作为筛选按钮
-        tvFilter = findViewById(R.id.tv_filter);
+        tvFilter = findViewById(R.id.tv_filter); // 获取右上角筛选按钮
 
         findViewById(R.id.iv_back).setOnClickListener(v -> finish());
 
+        // 初始化列表
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         adapter = new PaymentRecordAdapter(this, new ArrayList<>());
         recyclerView.setAdapter(adapter);
 
+        // 设置筛选按钮点击事件
         tvFilter.setOnClickListener(v -> showFilterDialog());
     }
 
@@ -82,17 +82,9 @@ public class PaymentDashboardActivity extends AppCompatActivity {
 
     private void loadData() {
         new Thread(() -> {
-            AppDatabase db = AppDatabase.getInstance(this);
-
-            // 1. 获取该用户的所有缴费记录
-            allRecords = db.paymentRecordDao().getByPhone(currentUser.getPhone());
-
-            // 2. 获取所有的账单信息，建立 BillId -> Bill 的映射
-            // 这样做是为了筛选时能直接查到某条记录对应的账单是哪年哪月的
-            List<PropertyFeeBill> allBills = db.propertyFeeBillDao().getAll(); // 假设Dao有getAll方法，或者查询相关账单
-            for (PropertyFeeBill bill : allBills) {
-                billMap.put(bill.getId(), bill);
-            }
+            allRecords = AppDatabase.getInstance(this)
+                    .paymentRecordDao()
+                    .getByPhone(currentUser.getPhone());
 
             // 默认显示所有数据
             runOnUiThread(() -> applyFilter(new FilterData()));
@@ -100,45 +92,32 @@ public class PaymentDashboardActivity extends AppCompatActivity {
     }
 
     /**
-     * 核心筛选逻辑修改：
-     * 不再使用 record.getPayTime() (支付时间)
-     * 而是使用 billMap.get(record.getBillId()) 获取账单的 year 和 month (账单周期)
+     * 根据筛选条件刷新界面
+     * @param filterData 筛选数据
      */
     private void applyFilter(FilterData filterData) {
         List<PaymentRecord> filteredList = new ArrayList<>();
         double totalAmount = 0;
+        SimpleDateFormat sdfYear = new SimpleDateFormat("yyyy", Locale.getDefault());
+        SimpleDateFormat sdfMonth = new SimpleDateFormat("MM", Locale.getDefault());
 
         List<String> selectedYears = filterData.getSelectedYears();
         List<String> selectedMonths = filterData.getSelectedMonths();
 
         for (PaymentRecord record : allRecords) {
-            // 获取该记录对应的账单
-            PropertyFeeBill bill = billMap.get(record.getBillId());
+            Date date = new Date(record.getPayTime());
+            String rYear = sdfYear.format(date);
+            String rMonth = sdfMonth.format(date);
 
-            if (bill != null) {
-                String billYear = bill.getYear(); // 账单所属年份，如 "2025"
-                String billMonth = bill.getMonth(); // 账单所属月份，如 "01" 或 "1"
+            // 年份筛选：如果未选中任何年份，默认视为全选；否则检查是否包含
+            boolean yearMatch = (selectedYears == null || selectedYears.isEmpty()) || selectedYears.contains(rYear);
 
-                // 统一格式化月份，确保 "1" 和 "01" 能匹配
-                if (billMonth != null && billMonth.length() == 1) {
-                    billMonth = "0" + billMonth;
-                }
+            // 月份筛选：如果未选中任何月份，默认视为全选；否则检查是否包含
+            boolean monthMatch = (selectedMonths == null || selectedMonths.isEmpty()) || selectedMonths.contains(rMonth);
 
-                // 1. 年份筛选
-                boolean yearMatch = (selectedYears == null || selectedYears.isEmpty())
-                        || selectedYears.contains(billYear);
-
-                // 2. 月份筛选
-                boolean monthMatch = (selectedMonths == null || selectedMonths.isEmpty())
-                        || selectedMonths.contains(billMonth);
-
-                if (yearMatch && monthMatch) {
-                    filteredList.add(record);
-                    totalAmount += record.getAmount();
-                }
-            } else {
-                // 如果找不到对应的账单（极其罕见的情况），可以选择不显示或者默认显示
-                // 这里选择不显示，因为无法判断其周期
+            if (yearMatch && monthMatch) {
+                filteredList.add(record);
+                totalAmount += record.getAmount();
             }
         }
 
@@ -157,16 +136,11 @@ public class PaymentDashboardActivity extends AppCompatActivity {
         }
 
         Map<String, Double> typeMap = new LinkedHashMap<>();
-        // 初始化统计类别
-        typeMap.put("物业费", 0.0);
-        typeMap.put("维修金", 0.0);
-        typeMap.put("公摊水电", 0.0);
-        typeMap.put("电梯费", 0.0);
-        typeMap.put("其他", 0.0);
+        String[] keys = {"物业费", "维修金", "公摊水电", "电梯费", "其他"};
+        for(String k : keys) typeMap.put(k, 0.0);
 
         for (PaymentRecord r : records) {
             boolean parsed = false;
-            // 解析费用详情快照
             if (r.getFeeDetailsSnapshot() != null && !r.getFeeDetailsSnapshot().isEmpty()) {
                 try {
                     JSONObject json = new JSONObject(r.getFeeDetailsSnapshot());
@@ -180,7 +154,6 @@ public class PaymentDashboardActivity extends AppCompatActivity {
                     if (utility > 0) typeMap.put("公摊水电", typeMap.get("公摊水电") + utility);
                     if (elevator > 0) typeMap.put("电梯费", typeMap.get("电梯费") + elevator);
 
-                    // 计算是否有剩余金额归为其他
                     double subTotal = property + maintenance + utility + elevator;
                     if (r.getAmount() > subTotal + 0.01) {
                         typeMap.put("其他", typeMap.get("其他") + (r.getAmount() - subTotal));
@@ -213,9 +186,8 @@ public class PaymentDashboardActivity extends AppCompatActivity {
         pieChart.setData(data);
         pieChart.setUsePercentValues(true);
         pieChart.getDescription().setEnabled(false);
-        pieChart.setCenterText("费用构成");
+        pieChart.setCenterText("费用构成"); // 固定中心文字
 
-        // 图例设置
         Legend l = pieChart.getLegend();
         l.setVerticalAlignment(Legend.LegendVerticalAlignment.BOTTOM);
         l.setHorizontalAlignment(Legend.LegendHorizontalAlignment.CENTER);
