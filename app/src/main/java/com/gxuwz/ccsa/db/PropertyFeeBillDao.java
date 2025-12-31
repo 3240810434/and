@@ -37,5 +37,6 @@ public interface PropertyFeeBillDao {
     @Query("SELECT * FROM property_fee_bill WHERE community = :community")
     List<PropertyFeeBill> getByCommunity(String community);
 
-
+    @Query("SELECT * FROM property_fee_bill")
+    List<PropertyFeeBill> getAll();
 }
