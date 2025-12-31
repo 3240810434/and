@@ -1,5 +1,6 @@
 package com.gxuwz.ccsa.ui.resident;
 
+import android.content.DialogInterface;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
@@ -31,7 +32,6 @@ import com.gxuwz.ccsa.util.SharedPreferencesUtil;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -40,7 +40,6 @@ import java.util.Map;
 public class PaymentDashboardActivity extends AppCompatActivity {
 
     private PieChart pieChart;
-    // 删除了 TableLayout tableReport
     private RecyclerView recyclerView;
     private TextView tvTotalYearly;
     private TextView tvMonthFilter;
@@ -53,11 +52,12 @@ public class PaymentDashboardActivity extends AppCompatActivity {
 
     // 筛选状态
     private int currentSelectedYear;
-    // 记录12个月的选中状态，默认全选 (true)
-    private boolean[] selectedMonthsState = new boolean[12];
+    // 修复：使用整型记录当前选中的月份，-1 代表“全年”，0-11 代表 1月-12月
+    private int currentSelectedMonth = -1;
 
-    // 标签，对应索引 0-11
+    // 标签，增加“全年”选项用于单选逻辑
     private final String[] monthLabels = new String[]{
+            "全年",
             "1月", "2月", "3月", "4月", "5月", "6月",
             "7月", "8月", "9月", "10月", "11月", "12月"
     };
@@ -67,18 +67,21 @@ public class PaymentDashboardActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_payment_dashboard);
 
-        // 默认选中所有月份
-        Arrays.fill(selectedMonthsState, true);
+        // 修复：默认选中当前月份，而不是全选
+        Calendar calendar = Calendar.getInstance();
+        currentSelectedMonth = calendar.get(Calendar.MONTH); // 获取当前月份 (0-11)
 
         currentUser = SharedPreferencesUtil.getUser(this);
         initViews();
+
+        // 更新一次筛选器文本，显示当前月份
+        updateMonthFilterText();
+
         loadData();
     }
 
     private void initViews() {
         pieChart = findViewById(R.id.chart_pie);
-        // 删除了 tableReport 绑定
-
         recyclerView = findViewById(R.id.recycler_view_records);
         tvTotalYearly = findViewById(R.id.tv_total_yearly);
         spYear = findViewById(R.id.sp_year);
@@ -124,50 +127,39 @@ public class PaymentDashboardActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * 修复：改为单选对话框，明确“选择某一月”或“全年”
+     */
     private void showMonthFilterDialog() {
-        boolean[] tempState = Arrays.copyOf(selectedMonthsState, selectedMonthsState.length);
+        // 对话框中的选中索引：如果 currentSelectedMonth 是 -1 (全年)，对应索引 0
+        // 如果是 0 (1月)，对应索引 1，以此类推
+        int checkedItemIndex = currentSelectedMonth + 1;
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("选择月份");
-        builder.setMultiChoiceItems(monthLabels, tempState, (dialog, which, isChecked) -> {
-            tempState[which] = isChecked;
-        });
+        builder.setSingleChoiceItems(monthLabels, checkedItemIndex, (dialog, which) -> {
+            // update selection immediately
+            if (which == 0) {
+                currentSelectedMonth = -1; // 全年
+            } else {
+                currentSelectedMonth = which - 1; // 0-11
+            }
 
-        builder.setPositiveButton("确定", (dialog, which) -> {
-            boolean hasSelection = false;
-            for (boolean b : tempState) {
-                if (b) {
-                    hasSelection = true;
-                    break;
-                }
-            }
-            if (!hasSelection) {
-                Toast.makeText(this, "请至少选择一个月", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            System.arraycopy(tempState, 0, selectedMonthsState, 0, tempState.length);
             updateMonthFilterText();
             updateUI();
+            dialog.dismiss(); // 单选模式下，选择即关闭，体验更好
         });
 
         builder.setNegativeButton("取消", null);
-        builder.setNeutralButton("全选", (dialog, which) -> {
-            Arrays.fill(selectedMonthsState, true);
-            updateMonthFilterText();
-            updateUI();
-        });
         builder.show();
     }
 
     private void updateMonthFilterText() {
-        int count = 0;
-        for (boolean b : selectedMonthsState) {
-            if (b) count++;
-        }
-        if (count == 12) {
-            tvMonthFilter.setText("全部月份 ▼");
+        if (currentSelectedMonth == -1) {
+            tvMonthFilter.setText("全年数据 ▼");
         } else {
-            tvMonthFilter.setText("已选 " + count + " 个月 ▼");
+            // currentSelectedMonth 是 0-11，显示时 +1
+            tvMonthFilter.setText((currentSelectedMonth + 1) + "月 ▼");
         }
     }
 
@@ -181,12 +173,11 @@ public class PaymentDashboardActivity extends AppCompatActivity {
     }
 
     /**
-     * 核心刷新方法
+     * 核心刷新方法 - 修复联动逻辑
      */
     private void updateUI() {
         // 1. 准备数据容器
-        List<PaymentRecord> filteredListForList = new ArrayList<>(); // 用于列表和总计（受月份筛选影响）
-
+        List<PaymentRecord> filteredList = new ArrayList<>();
         double totalAmount = 0;
         Calendar cal = Calendar.getInstance();
 
@@ -196,31 +187,32 @@ public class PaymentDashboardActivity extends AppCompatActivity {
             int recordYear = cal.get(Calendar.YEAR);
             int recordMonth = cal.get(Calendar.MONTH); // 0-11
 
+            // 年份必须匹配
             if (recordYear == currentSelectedYear) {
-                // 列表和总金额计算受月份筛选限制
-                if (recordMonth >= 0 && recordMonth < 12 && selectedMonthsState[recordMonth]) {
-                    filteredListForList.add(record);
+                // 修复逻辑：如果是全年(-1) 或者 月份匹配，才加入统计
+                if (currentSelectedMonth == -1 || recordMonth == currentSelectedMonth) {
+                    filteredList.add(record);
                     totalAmount += record.getAmount();
                 }
             }
         }
 
         // 3. 更新视图
-        adapter.updateData(filteredListForList);
+        // 更新列表
+        adapter.updateData(filteredList);
+
+        // 更新总金额文本
         tvTotalYearly.setText(String.format("¥ %.2f", totalAmount));
 
-        // 更新饼图 (基于筛选后的数据)
-        if (filteredListForList.isEmpty()) {
+        // 更新饼图 (基于筛选后的数据，实现图表联动)
+        if (filteredList.isEmpty()) {
             pieChart.clear();
-            pieChart.setNoDataText("无数据");
+            pieChart.setNoDataText(currentSelectedMonth == -1 ? "本年度无数据" : "本月无数据");
+            pieChart.invalidate();
         } else {
-            updatePieChart(filteredListForList);
+            updatePieChart(filteredList);
         }
-
-        // 删除了 updateReportTable 调用
     }
-
-    // 删除了 updateReportTable 方法
 
     private void updatePieChart(List<PaymentRecord> records) {
         Map<String, Double> typeMap = new LinkedHashMap<>();
@@ -264,6 +256,13 @@ public class PaymentDashboardActivity extends AppCompatActivity {
             }
         }
 
+        // 如果没有具体费用细则，饼图可能为空，需处理
+        if (entries.isEmpty()) {
+            pieChart.clear();
+            pieChart.setNoDataText("无详细费用构成");
+            return;
+        }
+
         PieDataSet set = new PieDataSet(entries, "");
         set.setColors(ColorTemplate.MATERIAL_COLORS);
         set.setValueTextSize(12f);
@@ -274,7 +273,13 @@ public class PaymentDashboardActivity extends AppCompatActivity {
         pieChart.setData(data);
         pieChart.setUsePercentValues(true);
         pieChart.getDescription().setEnabled(false);
-        pieChart.setCenterText("费用构成");
+
+        // 动态设置中心文字
+        if (currentSelectedMonth == -1) {
+            pieChart.setCenterText("全年费用");
+        } else {
+            pieChart.setCenterText((currentSelectedMonth + 1) + "月费用");
+        }
 
         // 设置图例
         Legend l = pieChart.getLegend();

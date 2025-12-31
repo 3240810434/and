@@ -141,8 +141,38 @@ public class PaymentStatisticsActivity extends AppCompatActivity {
                         payDate = sdf.format(bill.getPaymentTime());
                     }
 
-                    // 提取年月作为缴费周期
-                    String period = bill.getPeriodStart().substring(0, 7); // 假设格式为yyyy-MM-dd
+                    // ------------------ 修复开始：鲁棒的日期处理逻辑 ------------------
+                    // 提取年月作为缴费周期，解决 "2023-1-1" 无法匹配 "01" 月份的问题
+                    String period = "";
+                    String rawDate = bill.getPeriodStart();
+                    if (rawDate != null) {
+                        try {
+                            // 尝试按 "-" 分割日期
+                            String[] parts = rawDate.split("-");
+                            if (parts.length >= 2) {
+                                String year = parts[0];
+                                String month = parts[1];
+                                // 如果月份是单数（如 "1"），前面补 "0" 变为 "01"
+                                if (month.length() == 1) {
+                                    month = "0" + month;
+                                }
+                                period = year + "-" + month;
+                            } else if (rawDate.length() >= 7) {
+                                // 备用方案：直接截取
+                                period = rawDate.substring(0, 7);
+                            } else {
+                                period = rawDate;
+                            }
+                        } catch (Exception e) {
+                            // 发生异常时回退到原始逻辑，防止崩溃
+                            if (rawDate.length() >= 7) {
+                                period = rawDate.substring(0, 7);
+                            } else {
+                                period = rawDate;
+                            }
+                        }
+                    }
+                    // ------------------ 修复结束 ------------------
 
                     // 添加到列表
                     paymentList.add(new PaymentItem(
@@ -262,17 +292,27 @@ public class PaymentStatisticsActivity extends AppCompatActivity {
         for (PaymentItem item : paymentList) {
             // 筛选年份
             if (filterData.getSelectedYears() != null && !filterData.getSelectedYears().isEmpty()) {
-                String itemYear = item.getPeriod().substring(0, 4);
-                if (!filterData.getSelectedYears().contains(itemYear)) {
-                    continue;
+                // 增加空值和长度校验
+                if (item.getPeriod() != null && item.getPeriod().length() >= 4) {
+                    String itemYear = item.getPeriod().substring(0, 4);
+                    if (!filterData.getSelectedYears().contains(itemYear)) {
+                        continue;
+                    }
+                } else {
+                    continue; // 格式不符，跳过
                 }
             }
 
             // 筛选月份
             if (filterData.getSelectedMonths() != null && !filterData.getSelectedMonths().isEmpty()) {
-                String itemMonth = item.getPeriod().substring(5, 7); // 格式 yyyy-MM
-                if (!filterData.getSelectedMonths().contains(itemMonth)) {
-                    continue;
+                // 增加空值和长度校验，且此时 period 已经格式化为 "yyyy-MM"
+                if (item.getPeriod() != null && item.getPeriod().length() >= 7) {
+                    String itemMonth = item.getPeriod().substring(5, 7); // 格式 yyyy-MM
+                    if (!filterData.getSelectedMonths().contains(itemMonth)) {
+                        continue;
+                    }
+                } else {
+                    continue; // 格式不符，跳过
                 }
             }
 
