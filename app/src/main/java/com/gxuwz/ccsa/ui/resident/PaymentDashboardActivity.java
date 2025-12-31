@@ -1,6 +1,5 @@
 package com.gxuwz.ccsa.ui.resident;
 
-import android.content.DialogInterface;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
@@ -52,10 +51,11 @@ public class PaymentDashboardActivity extends AppCompatActivity {
 
     // 筛选状态
     private int currentSelectedYear;
-    // 修复：使用整型记录当前选中的月份，-1 代表“全年”，0-11 代表 1月-12月
+    // 修复的核心变量：记录当前选中的月份
+    // -1 代表“全年”，0-11 代表 1月-12月
     private int currentSelectedMonth = -1;
 
-    // 标签，增加“全年”选项用于单选逻辑
+    // 标签，调整为包含“全年”选项的单选列表
     private final String[] monthLabels = new String[]{
             "全年",
             "1月", "2月", "3月", "4月", "5月", "6月",
@@ -67,14 +67,14 @@ public class PaymentDashboardActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_payment_dashboard);
 
-        // 修复：默认选中当前月份，而不是全选
+        // 修复1：初始化时默认选中当前月份，而不是强制全选或12月
         Calendar calendar = Calendar.getInstance();
         currentSelectedMonth = calendar.get(Calendar.MONTH); // 获取当前月份 (0-11)
 
         currentUser = SharedPreferencesUtil.getUser(this);
         initViews();
 
-        // 更新一次筛选器文本，显示当前月份
+        // 确保UI上显示的文字与默认月份一致
         updateMonthFilterText();
 
         loadData();
@@ -120,7 +120,7 @@ public class PaymentDashboardActivity extends AppCompatActivity {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 currentSelectedYear = Integer.parseInt(years[position]);
-                updateUI(); // 年份改变时刷新
+                updateUI(); // 年份改变时刷新数据
             }
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
@@ -128,17 +128,21 @@ public class PaymentDashboardActivity extends AppCompatActivity {
     }
 
     /**
-     * 修复：改为单选对话框，明确“选择某一月”或“全年”
+     * 修复2：改为单选对话框，明确“选择某一月”或“全年”
+     * 解决多选模式下逻辑混乱导致默认全选的问题
      */
     private void showMonthFilterDialog() {
-        // 对话框中的选中索引：如果 currentSelectedMonth 是 -1 (全年)，对应索引 0
-        // 如果是 0 (1月)，对应索引 1，以此类推
+        // 计算对话框中应选中的索引
+        // currentSelectedMonth: -1(全年) -> index 0
+        // currentSelectedMonth: 0(1月)   -> index 1 ...
         int checkedItemIndex = currentSelectedMonth + 1;
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("选择月份");
+
+        // 使用单选模式
         builder.setSingleChoiceItems(monthLabels, checkedItemIndex, (dialog, which) -> {
-            // update selection immediately
+            // update selection
             if (which == 0) {
                 currentSelectedMonth = -1; // 全年
             } else {
@@ -146,8 +150,8 @@ public class PaymentDashboardActivity extends AppCompatActivity {
             }
 
             updateMonthFilterText();
-            updateUI();
-            dialog.dismiss(); // 单选模式下，选择即关闭，体验更好
+            updateUI(); // 触发联动刷新
+            dialog.dismiss(); // 选择后自动关闭，体验更佳
         });
 
         builder.setNegativeButton("取消", null);
@@ -187,9 +191,9 @@ public class PaymentDashboardActivity extends AppCompatActivity {
             int recordYear = cal.get(Calendar.YEAR);
             int recordMonth = cal.get(Calendar.MONTH); // 0-11
 
-            // 年份必须匹配
+            // 必须匹配年份
             if (recordYear == currentSelectedYear) {
-                // 修复逻辑：如果是全年(-1) 或者 月份匹配，才加入统计
+                // 修复逻辑：如果是全年(-1) 或者 月份严格匹配，才加入统计
                 if (currentSelectedMonth == -1 || recordMonth == currentSelectedMonth) {
                     filteredList.add(record);
                     totalAmount += record.getAmount();
@@ -204,7 +208,9 @@ public class PaymentDashboardActivity extends AppCompatActivity {
         // 更新总金额文本
         tvTotalYearly.setText(String.format("¥ %.2f", totalAmount));
 
-        // 更新饼图 (基于筛选后的数据，实现图表联动)
+        // 修复3：更新饼图
+        // 此时传入的 filteredList 仅包含用户选定月份的数据
+        // 从而保证了饼图显示的是当月费用构成，而不是全年总和
         if (filteredList.isEmpty()) {
             pieChart.clear();
             pieChart.setNoDataText(currentSelectedMonth == -1 ? "本年度无数据" : "本月无数据");
@@ -256,10 +262,10 @@ public class PaymentDashboardActivity extends AppCompatActivity {
             }
         }
 
-        // 如果没有具体费用细则，饼图可能为空，需处理
         if (entries.isEmpty()) {
             pieChart.clear();
             pieChart.setNoDataText("无详细费用构成");
+            pieChart.invalidate();
             return;
         }
 
@@ -274,7 +280,7 @@ public class PaymentDashboardActivity extends AppCompatActivity {
         pieChart.setUsePercentValues(true);
         pieChart.getDescription().setEnabled(false);
 
-        // 动态设置中心文字
+        // 动态设置中心文字，增强用户感知
         if (currentSelectedMonth == -1) {
             pieChart.setCenterText("全年费用");
         } else {
