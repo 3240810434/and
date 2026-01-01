@@ -116,11 +116,9 @@ public class NotificationFragment extends Fragment {
 
         String packageName = requireContext().getPackageName();
         bannerImages.clear();
-        // 修改：将轮播图资源更换为 banner4, banner5, banner6
-        // 请确保 res/drawable 目录下存在 banner4.jpg, banner5.jpg, banner6.jpg
+
         bannerImages.add("android.resource://" + packageName + "/" + R.drawable.banner4);
         bannerImages.add("android.resource://" + packageName + "/" + R.drawable.banner5);
-        bannerImages.add("android.resource://" + packageName + "/" + R.drawable.banner6);
 
         bannerAdapter = new BannerAdapter(getContext(), bannerImages);
         viewPager.setAdapter(bannerAdapter);
