@@ -1,5 +1,7 @@
 package com.gxuwz.ccsa.adapter;
 
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -81,6 +83,15 @@ public class MerchantPendingOrderAdapter extends RecyclerView.Adapter<MerchantPe
         // 取消按钮事件 - 仅在待接单状态显示
         if ("待接单".equals(order.status)) {
             holder.btnCancel.setVisibility(View.VISIBLE);
+
+            // 设置取消按钮颜色为 #C41E3A，并保持圆角
+            GradientDrawable bg = new GradientDrawable();
+            bg.setShape(GradientDrawable.RECTANGLE);
+            bg.setColor(Color.parseColor("#C41E3A"));
+            bg.setCornerRadius(15); // 设置适当的圆角
+            holder.btnCancel.setBackground(bg);
+            holder.btnCancel.setTextColor(Color.WHITE);
+
             holder.btnCancel.setOnClickListener(v -> {
                 if (listener != null) listener.onCancel(order);
             });
@@ -122,7 +133,6 @@ public class MerchantPendingOrderAdapter extends RecyclerView.Adapter<MerchantPe
             tvPayAmount = itemView.findViewById(R.id.tv_pay_amount);
             tvPayMethod = itemView.findViewById(R.id.tv_pay_method);
             btnAccept = itemView.findViewById(R.id.btn_accept_order);
-            // 绑定新增按钮
             btnCancel = itemView.findViewById(R.id.btn_cancel_order);
         }
     }

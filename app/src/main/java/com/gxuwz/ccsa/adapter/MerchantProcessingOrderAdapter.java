@@ -18,10 +18,8 @@ import java.util.List;
 
 public class MerchantProcessingOrderAdapter extends RecyclerView.Adapter<MerchantProcessingOrderAdapter.ViewHolder> {
 
-    // --- 修改点在这里 ---
-    protected List<Order> list; // 改为 protected，让子类可以访问
-    protected Context context;  // 建议 context 也改为 protected，方便子类使用
-    // --------------------
+    protected List<Order> list;
+    protected Context context;
 
     private OnOrderActionListener listener;
 
@@ -49,7 +47,6 @@ public class MerchantProcessingOrderAdapter extends RecyclerView.Adapter<Merchan
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Order order = list.get(position);
 
-        // ... (原有的绑定逻辑保持不变) ...
         holder.tvOrderNo.setText("订单号: " + order.orderNo);
         holder.tvStatus.setText(order.status);
         holder.tvCreateTime.setText("下单: " + order.createTime);
@@ -76,6 +73,11 @@ public class MerchantProcessingOrderAdapter extends RecyclerView.Adapter<Merchan
         holder.tvPayAmount.setText("¥" + order.payAmount);
         holder.tvPayMethod.setText(order.paymentMethod);
 
+        // 关键修改：隐藏取消按钮
+        if (holder.btnCancel != null) {
+            holder.btnCancel.setVisibility(View.GONE);
+        }
+
         holder.btnAccept.setText("标记完成");
         holder.btnAccept.setOnClickListener(v -> {
             new AlertDialog.Builder(context)
@@ -92,15 +94,14 @@ public class MerchantProcessingOrderAdapter extends RecyclerView.Adapter<Merchan
     @Override
     public int getItemCount() { return list == null ? 0 : list.size(); }
 
-    // 将 ViewHolder 设为 public static，以便子类可以引用（如果是内部类的话）
-    // 或者保持不变，只要上面的 list 访问权限改了即可
     public static class ViewHolder extends RecyclerView.ViewHolder {
         TextView tvOrderNo, tvStatus, tvCreateTime, tvProductName, tvTags;
         ImageView ivProductImg;
         LinearLayout llPhysicalInfo, llServiceInfo;
         TextView tvPhysicalSpec, tvPhysicalDelivery, tvServicePriceUnit, tvServiceType;
         TextView tvResidentInfo, tvAddress, tvPayAmount, tvPayMethod;
-        public Button btnAccept; // 确保按钮是 public 的，否则子类无法修改文字
+        public Button btnAccept;
+        public Button btnCancel; // 确保包含这个按钮
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -121,6 +122,7 @@ public class MerchantProcessingOrderAdapter extends RecyclerView.Adapter<Merchan
             tvPayAmount = itemView.findViewById(R.id.tv_pay_amount);
             tvPayMethod = itemView.findViewById(R.id.tv_pay_method);
             btnAccept = itemView.findViewById(R.id.btn_accept_order);
+            btnCancel = itemView.findViewById(R.id.btn_cancel_order); // 绑定ID以便隐藏
         }
     }
 }
