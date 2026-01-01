@@ -326,9 +326,9 @@ public class MerchantProductDetailActivity extends AppCompatActivity {
 
     private void showDeleteConfirmDialog() {
         new AlertDialog.Builder(this)
-                .setTitle("确认删除")
-                .setMessage("确定要删除该商品吗？此操作不可撤销。")
-                .setPositiveButton("删除", (dialog, which) -> deleteProduct())
+                .setTitle("确认下架")
+                .setMessage("确定要下架该商品吗？此操作不可撤销。")
+                .setPositiveButton("下架", (dialog, which) -> deleteProduct())
                 .setNegativeButton("取消", null)
                 .show();
     }
@@ -337,7 +337,7 @@ public class MerchantProductDetailActivity extends AppCompatActivity {
         Executors.newSingleThreadExecutor().execute(() -> {
             AppDatabase.getInstance(this).productDao().delete(currentProduct);
             runOnUiThread(() -> {
-                Toast.makeText(this, "商品已删除", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "商品已下架", Toast.LENGTH_SHORT).show();
                 finish();
             });
         });

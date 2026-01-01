@@ -30,7 +30,7 @@
         android:id="@+id/btn_delete_product"
         android:layout_width="match_parent"
         android:layout_height="55dp"
-        android:text="删除商品"
+        android:text="下架商品"
         android:textColor="@android:color/white"
         android:textSize="16sp"
         android:backgroundTint="#F44336" />
