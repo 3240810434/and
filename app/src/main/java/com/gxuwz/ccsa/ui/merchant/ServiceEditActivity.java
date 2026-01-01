@@ -2,6 +2,7 @@ package com.gxuwz.ccsa.ui.merchant;
 
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.content.SharedPreferences; // 必须导入
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -38,15 +39,12 @@ public class ServiceEditActivity extends AppCompatActivity {
     private static final int REQUEST_CODE_PICK_IMAGE = 102;
 
     private EditText etName, etDesc, etPrice;
-    // 删除了 etExtraFeeNote
     private LinearLayout llImageContainer;
     private ImageView ivAddImage;
     private Spinner spinnerUnit;
     private RadioGroup rgServiceType, rgServiceTag;
 
     private List<String> selectedImagePaths = new ArrayList<>();
-
-    // 新增：保存正在编辑的对象
     private Product mEditingProduct;
 
     @Override
@@ -55,7 +53,6 @@ public class ServiceEditActivity extends AppCompatActivity {
         setContentView(R.layout.activity_service_edit);
         initView();
 
-        // 修复：添加数据回显逻辑
         if (getIntent().hasExtra("product")) {
             mEditingProduct = (Product) getIntent().getSerializableExtra("product");
             initDataFromProduct();
@@ -68,7 +65,6 @@ public class ServiceEditActivity extends AppCompatActivity {
         etName = findViewById(R.id.et_name);
         etDesc = findViewById(R.id.et_desc);
         etPrice = findViewById(R.id.et_price);
-        // 删除 etExtraFeeNote 查找
 
         llImageContainer = findViewById(R.id.ll_image_container);
         ivAddImage = findViewById(R.id.iv_add_image);
@@ -89,13 +85,11 @@ public class ServiceEditActivity extends AppCompatActivity {
         btnPublish.setOnClickListener(v -> attemptPublish());
     }
 
-    // 修复：实现数据回显
     private void initDataFromProduct() {
         etName.setText(mEditingProduct.name);
         etDesc.setText(mEditingProduct.description);
         etPrice.setText(mEditingProduct.price);
 
-        // 回显图片
         if (mEditingProduct.imagePaths != null && !mEditingProduct.imagePaths.isEmpty()) {
             String[] paths = mEditingProduct.imagePaths.split(",");
             for (String path : paths) {
@@ -106,7 +100,6 @@ public class ServiceEditActivity extends AppCompatActivity {
             renderImages();
         }
 
-        // 回显单位
         String unit = mEditingProduct.unit;
         if (unit != null) {
             ArrayAdapter adapter = (ArrayAdapter) spinnerUnit.getAdapter();
@@ -114,7 +107,6 @@ public class ServiceEditActivity extends AppCompatActivity {
             if (pos >= 0) spinnerUnit.setSelection(pos);
         }
 
-        // 回显标签
         if (mEditingProduct.tag != null) {
             String tag = mEditingProduct.tag;
             if (tag.equals("保洁服务")) rgServiceTag.check(R.id.rb_tag_clean);
@@ -123,7 +115,6 @@ public class ServiceEditActivity extends AppCompatActivity {
             else if (tag.equals("便民代办")) rgServiceTag.check(R.id.rb_tag_errand);
         }
 
-        // 回显类型 (需要解析 priceTableJson 中的 mode 字段)
         try {
             JSONArray ja = new JSONArray(mEditingProduct.priceTableJson);
             if (ja.length() > 0) {
@@ -233,7 +224,6 @@ public class ServiceEditActivity extends AppCompatActivity {
             e.printStackTrace();
         }
 
-        // 移除了 extraFee 参数
         showPreviewDialog(name, desc, priceJson, serviceMode, serviceTag, priceStr, unit);
     }
 
@@ -256,6 +246,7 @@ public class ServiceEditActivity extends AppCompatActivity {
         tvPrice.setText("价格：¥" + price + " / " + unit);
 
         builder.setView(view)
+                .setTitle("确认发布信息")
                 .setPositiveButton(mEditingProduct != null ? "确认修改" : "确认发布", (dialog, which) -> {
                     saveToDb(name, desc, priceJson.toString(), price, tag, unit);
                 })
@@ -263,9 +254,18 @@ public class ServiceEditActivity extends AppCompatActivity {
                 .show();
     }
 
-    // 增加 unit 参数
     private void saveToDb(String name, String desc, String jsonPrice, String priceVal, String tag, String unit) {
         final boolean isUpdate = (mEditingProduct != null);
+
+        // 【关键修改】从 SharedPreferences 获取真实的商家ID
+        SharedPreferences sp = getSharedPreferences("merchant_prefs", MODE_PRIVATE);
+        int currentMerchantId = sp.getInt("merchant_id", -1);
+
+        if (currentMerchantId == -1) {
+            Toast.makeText(this, "登录状态失效，请重新登录", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         new Thread(() -> {
             Product product;
             if (isUpdate) {
@@ -273,7 +273,8 @@ public class ServiceEditActivity extends AppCompatActivity {
             } else {
                 product = new Product();
                 product.createTime = DateUtils.getCurrentDateTime();
-                product.merchantId = 1;
+                // 修复：使用动态获取的 ID
+                product.merchantId = currentMerchantId;
                 product.type = "SERVICE";
             }
 
@@ -283,7 +284,7 @@ public class ServiceEditActivity extends AppCompatActivity {
             product.price = priceVal;
             product.deliveryMethod = 0;
             product.tag = tag;
-            product.unit = unit; // 保存单位
+            product.unit = unit;
 
             StringBuilder sb = new StringBuilder();
             for (String s : selectedImagePaths) {

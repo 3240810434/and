@@ -2,6 +2,7 @@ package com.gxuwz.ccsa.ui.merchant;
 
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.content.SharedPreferences; // 必须导入
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -36,11 +37,10 @@ public class PhysicalProductEditActivity extends AppCompatActivity {
     private EditText etName, etDesc;
     private LinearLayout llImageContainer, llPriceTableContainer;
     private RadioGroup rgDelivery;
-    private RadioGroup rgTag; // 标签RadioGroup
+    private RadioGroup rgTag;
     private List<String> selectedImagePaths = new ArrayList<>();
     private ImageView ivAddImage;
 
-    // 保存正在编辑的商品对象
     private Product mEditingProduct;
 
     @Override
@@ -50,12 +50,10 @@ public class PhysicalProductEditActivity extends AppCompatActivity {
 
         initView();
 
-        // 判断是新增还是编辑
         if (getIntent().hasExtra("product")) {
             mEditingProduct = (Product) getIntent().getSerializableExtra("product");
             initDataFromProduct();
         } else {
-            // 新增模式，默认添加3行空价格表
             addPriceRow();
             addPriceRow();
             addPriceRow();
@@ -71,7 +69,7 @@ public class PhysicalProductEditActivity extends AppCompatActivity {
         ivAddImage = findViewById(R.id.iv_add_image);
         llPriceTableContainer = findViewById(R.id.ll_price_table_container);
         rgDelivery = findViewById(R.id.rg_delivery);
-        rgTag = findViewById(R.id.rg_tag); // 初始化标签RadioGroup
+        rgTag = findViewById(R.id.rg_tag);
         Button btnPublish = findViewById(R.id.btn_publish);
         ImageView btnAddPriceRow = findViewById(R.id.btn_add_price_row);
 
@@ -81,18 +79,15 @@ public class PhysicalProductEditActivity extends AppCompatActivity {
     }
 
     private void initDataFromProduct() {
-        // 1. 回显文本信息
         etName.setText(mEditingProduct.name);
         etDesc.setText(mEditingProduct.description);
 
-        // 2. 回显配送方式
         if (mEditingProduct.deliveryMethod == 0) {
             rgDelivery.check(R.id.rb_delivery);
         } else {
             rgDelivery.check(R.id.rb_pickup);
         }
 
-        // 3. 回显图片
         if (mEditingProduct.imagePaths != null && !mEditingProduct.imagePaths.isEmpty()) {
             String[] paths = mEditingProduct.imagePaths.split(",");
             for (String path : paths) {
@@ -103,7 +98,6 @@ public class PhysicalProductEditActivity extends AppCompatActivity {
             renderImages();
         }
 
-        // 4. 回显价格表
         llPriceTableContainer.removeAllViews();
         try {
             JSONArray jsonArray = new JSONArray(mEditingProduct.priceTableJson);
@@ -116,21 +110,12 @@ public class PhysicalProductEditActivity extends AppCompatActivity {
             addPriceRow();
         }
 
-        // 5. 回显商品标签
         if (mEditingProduct.tag != null) {
             switch (mEditingProduct.tag) {
-                case "生鲜食材":
-                    rgTag.check(R.id.rb_tag_fresh);
-                    break;
-                case "日用百货":
-                    rgTag.check(R.id.rb_tag_daily);
-                    break;
-                case "零食饮品":
-                    rgTag.check(R.id.rb_tag_snack);
-                    break;
-                default:
-                    rgTag.check(R.id.rb_tag_fresh);
-                    break;
+                case "生鲜食材": rgTag.check(R.id.rb_tag_fresh); break;
+                case "日用百货": rgTag.check(R.id.rb_tag_daily); break;
+                case "零食饮品": rgTag.check(R.id.rb_tag_snack); break;
+                default: rgTag.check(R.id.rb_tag_fresh); break;
             }
         }
     }
@@ -244,7 +229,6 @@ public class PhysicalProductEditActivity extends AppCompatActivity {
 
         int deliveryType = rgDelivery.getCheckedRadioButtonId() == R.id.rb_delivery ? 0 : 1;
 
-        // 获取选中的标签
         String selectedTag = "生鲜食材";
         int checkedId = rgTag.getCheckedRadioButtonId();
         if (checkedId == R.id.rb_tag_daily) {
@@ -253,31 +237,24 @@ public class PhysicalProductEditActivity extends AppCompatActivity {
             selectedTag = "零食饮品";
         }
 
-        // 调用优化后的预览弹窗
         showPreviewDialog(name, desc, priceJson, deliveryType, selectedTag);
     }
 
-    // ==========================================
-    // 重点修改区域：优化后的确认面板
-    // ==========================================
     private void showPreviewDialog(String name, String desc, JSONArray priceJson, int deliveryType, String tag) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        // 注意：请确保你的 dialog_product_preview.xml 布局文件中包含了以下 ID 的 TextView
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_product_preview, null);
 
         TextView tvName = view.findViewById(R.id.tv_preview_name);
-        TextView tvDesc = view.findViewById(R.id.tv_preview_desc);        // 需要在XML中添加
+        TextView tvDesc = view.findViewById(R.id.tv_preview_desc);
         TextView tvPrice = view.findViewById(R.id.tv_preview_price);
-        TextView tvDelivery = view.findViewById(R.id.tv_preview_delivery); // 需要在XML中添加
-        TextView tvTag = view.findViewById(R.id.tv_preview_tag);           // 需要在XML中添加
+        TextView tvDelivery = view.findViewById(R.id.tv_preview_delivery);
+        TextView tvTag = view.findViewById(R.id.tv_preview_tag);
 
-        // 设置基本信息
         tvName.setText("名称：" + name);
         tvDesc.setText("详情：" + (desc.isEmpty() ? "暂无描述" : desc));
         tvTag.setText("标签：" + tag);
         tvDelivery.setText("配送：" + (deliveryType == 0 ? "商家配送" : "用户自提"));
 
-        // 构建价格表显示字符串（显示所有行）
         StringBuilder priceSb = new StringBuilder();
         priceSb.append("价格表：\n");
         try {
@@ -292,7 +269,7 @@ public class PhysicalProductEditActivity extends AppCompatActivity {
         tvPrice.setText(priceSb.toString());
 
         builder.setView(view)
-                .setTitle("确认发布信息") // 建议增加标题
+                .setTitle("确认发布信息")
                 .setPositiveButton(mEditingProduct != null ? "确认修改" : "确认发布", (dialog, which) -> {
                     saveToDb(name, desc, priceJson.toString(), deliveryType, tag);
                 })
@@ -303,6 +280,15 @@ public class PhysicalProductEditActivity extends AppCompatActivity {
     private void saveToDb(String name, String desc, String jsonPrice, int deliveryType, String tag) {
         final boolean isUpdate = (mEditingProduct != null);
 
+        // 【关键修改】从 SharedPreferences 获取真实的商家ID
+        SharedPreferences sp = getSharedPreferences("merchant_prefs", MODE_PRIVATE);
+        int currentMerchantId = sp.getInt("merchant_id", -1);
+
+        if (currentMerchantId == -1) {
+            Toast.makeText(this, "登录状态失效，请重新登录", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         new Thread(() -> {
             Product product;
 
@@ -311,7 +297,8 @@ public class PhysicalProductEditActivity extends AppCompatActivity {
             } else {
                 product = new Product();
                 product.createTime = DateUtils.getCurrentDateTime();
-                product.merchantId = 1; // 实际开发中应获取当前登录商家ID
+                // 修复：使用动态获取的 ID
+                product.merchantId = currentMerchantId;
                 product.type = "GOODS";
             }
 
@@ -319,7 +306,7 @@ public class PhysicalProductEditActivity extends AppCompatActivity {
             product.description = desc;
             product.priceTableJson = jsonPrice;
             product.deliveryMethod = deliveryType;
-            product.tag = tag; // 保存标签
+            product.tag = tag;
 
             try {
                 JSONArray ja = new JSONArray(jsonPrice);

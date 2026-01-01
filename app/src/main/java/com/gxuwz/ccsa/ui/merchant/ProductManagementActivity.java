@@ -2,6 +2,7 @@ package com.gxuwz.ccsa.ui.merchant;
 
 import android.app.Dialog;
 import android.content.Intent;
+import android.content.SharedPreferences; // 必须导入
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -10,6 +11,7 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -33,7 +35,9 @@ public class ProductManagementActivity extends AppCompatActivity {
     private TextView tvEmpty;
     private MerchantProductAdapter adapter;
     private List<Product> productList = new ArrayList<>();
-    private int currentMerchantId = 1;
+
+    // 修改1: 去掉硬编码 "= 1"，默认值设为 -1 表示未获取
+    private int currentMerchantId = -1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,11 +60,30 @@ public class ProductManagementActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        // 修改2: 在每次页面显示时，动态获取当前登录的商家ID
+        initMerchantData();
+    }
+
+    // 新增方法：获取商家ID并加载数据
+    private void initMerchantData() {
+        // 对应 MerchantLoginActivity 中的存储逻辑: getSharedPreferences("merchant_prefs", MODE_PRIVATE)
+        SharedPreferences sp = getSharedPreferences("merchant_prefs", MODE_PRIVATE);
+        currentMerchantId = sp.getInt("merchant_id", -1);
+
+        if (currentMerchantId == -1) {
+            // 如果获取失败（比如未登录），提示并关闭页面或显示空
+            Toast.makeText(this, "获取商家信息失败，请重新登录", Toast.LENGTH_SHORT).show();
+            finish(); // 或者跳转回登录页
+            return;
+        }
+
+        // ID获取成功后，加载该ID对应的数据
         loadData();
     }
 
     private void loadData() {
         new Thread(() -> {
+            // 使用动态获取的 currentMerchantId 查询数据库
             productList = AppDatabase.getInstance(this).productDao().getProductsByMerchantId(currentMerchantId);
             runOnUiThread(() -> {
                 if (productList == null || productList.isEmpty()) {
@@ -95,8 +118,6 @@ public class ProductManagementActivity extends AppCompatActivity {
         lp.width = WindowManager.LayoutParams.MATCH_PARENT;
         lp.height = (int) (getResources().getDisplayMetrics().heightPixels * 0.4);
         dialog.getWindow().setAttributes(lp);
-        // 如果没有定义 BottomDialogAnim 样式，可以注释掉下面这行
-        // dialog.getWindow().setWindowAnimations(R.style.BottomDialogAnim);
         dialog.show();
     }
 
@@ -105,7 +126,6 @@ public class ProductManagementActivity extends AppCompatActivity {
         @NonNull
         @Override
         public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            // 确保这里引用的布局文件名是正确的
             View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_product_card_merchant, parent, false);
             return new ViewHolder(view);
         }
@@ -115,7 +135,7 @@ public class ProductManagementActivity extends AppCompatActivity {
             Product product = productList.get(position);
             holder.tvName.setText(product.name);
 
-            // 1. 设置封面：默认第一张图
+            // 1. 设置封面
             if (product.imagePaths != null && !product.imagePaths.isEmpty()) {
                 String firstImage = product.imagePaths.split(",")[0];
                 Glide.with(ProductManagementActivity.this).load(firstImage).into(holder.ivCover);
@@ -160,10 +180,9 @@ public class ProductManagementActivity extends AppCompatActivity {
 
             public ViewHolder(@NonNull View itemView) {
                 super(itemView);
-                // 【关键修改】这里必须使用 item_product_card_merchant.xml 中定义的真实 ID
-                ivCover = itemView.findViewById(R.id.iv_product_cover); // 原代码是 R.id.iv_cover
-                tvName = itemView.findViewById(R.id.tv_product_name);   // 原代码是 R.id.tv_name
-                tvPrice = itemView.findViewById(R.id.tv_product_price); // 原代码是 R.id.tv_price
+                ivCover = itemView.findViewById(R.id.iv_product_cover);
+                tvName = itemView.findViewById(R.id.tv_product_name);
+                tvPrice = itemView.findViewById(R.id.tv_product_price);
             }
         }
     }
