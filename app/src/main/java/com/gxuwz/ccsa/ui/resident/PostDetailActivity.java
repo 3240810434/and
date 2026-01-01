@@ -22,8 +22,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 import com.bumptech.glide.Glide;
-import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
-import com.bumptech.glide.request.RequestOptions;
+import com.bumptech.glide.request.RequestOptions; // 确保保留此引用
 import com.gxuwz.ccsa.R;
 import com.gxuwz.ccsa.adapter.CommentAdapter;
 import com.gxuwz.ccsa.db.AppDatabase;
@@ -72,7 +71,7 @@ public class PostDetailActivity extends AppCompatActivity {
         setupPostContent(); // 先显示传递过来的基础内容
         setupComments();
 
-        // 【核心修复】加载最新的作者信息，覆盖可能过时的 Intent 数据
+        // 加载最新的作者信息，覆盖可能过时的 Intent 数据
         if (post != null) {
             loadLatestAuthorInfo(post.userId);
         }
@@ -116,7 +115,7 @@ public class PostDetailActivity extends AppCompatActivity {
         });
     }
 
-    // 【新增方法】从数据库获取最新用户信息并刷新界面
+    // 从数据库获取最新用户信息并刷新界面
     private void loadLatestAuthorInfo(int userId) {
         new Thread(() -> {
             User author = AppDatabase.getInstance(this).userDao().getUserById(userId);
@@ -126,8 +125,8 @@ public class PostDetailActivity extends AppCompatActivity {
                     post.userName = author.getName();
                     post.userAvatar = author.getAvatar();
 
-                    // 刷新 UI 显示
-                    RequestOptions options = RequestOptions.bitmapTransform(new RoundedCorners(100));
+                    // 修改：使用 circleCropTransform 替代 RoundedCorners(100) 以确保是正圆
+                    RequestOptions options = RequestOptions.circleCropTransform();
 
                     if (post.type == 2) {
                         // 视频模式更新 Header
@@ -158,8 +157,8 @@ public class PostDetailActivity extends AppCompatActivity {
 
         tvContent.setText(post.content);
 
-        // 初始加载（使用 Intent 数据作为缓冲，防止白屏，随后会被 loadLatestAuthorInfo 覆盖）
-        RequestOptions options = RequestOptions.bitmapTransform(new RoundedCorners(100));
+        // 修改：使用 circleCropTransform 替代 RoundedCorners(100)
+        RequestOptions options = RequestOptions.circleCropTransform();
 
         if (post.type == 2) {
             llBodyUserInfo.setVisibility(View.GONE);

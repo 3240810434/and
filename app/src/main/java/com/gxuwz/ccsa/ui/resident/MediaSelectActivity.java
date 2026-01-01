@@ -77,10 +77,12 @@ public class MediaSelectActivity extends AppCompatActivity {
     private void handleContinue() {
         selectedMedia = adapter.getSelectedItems();
 
-        if (selectedMedia.isEmpty()) {
-            Toast.makeText(this, "请先选择图片或视频", Toast.LENGTH_SHORT).show();
-            return;
-        }
+        // 【核心修改】删除了此处拦截空列表的逻辑
+        // 原来的代码：
+        // if (selectedMedia.isEmpty()) {
+        //     Toast.makeText(this, "请先选择图片或视频", Toast.LENGTH_SHORT).show();
+        //     return;
+        // }
 
         // === 校验逻辑：图片最多9张，视频只能1个，且不可混选 ===
         int imageCount = 0;
@@ -113,6 +115,7 @@ public class MediaSelectActivity extends AppCompatActivity {
         } else {
             // 原有的生活动态逻辑，跳转到 PostEditActivity
             Intent intent = new Intent(MediaSelectActivity.this, PostEditActivity.class);
+            // 即使 selectedMedia 为空，也可以传递过去，PostEditActivity 会处理为空的情况（发布纯文本）
             intent.putExtra("selected_media", (Serializable) selectedMedia);
             intent.putExtra("user", currentUser);
             startActivity(intent);

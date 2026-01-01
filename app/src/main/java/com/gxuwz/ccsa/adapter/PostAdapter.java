@@ -79,11 +79,12 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
         holder.tvTime.setText(DateUtils.getRelativeTime(post.createTime));
         holder.tvCommentCount.setText(post.commentCount > 0 ? String.valueOf(post.commentCount) : "评论");
 
+        // 修改处：使用 circleCropTransform() 确保头像是正圆形
         Glide.with(context)
                 .load(post.userAvatar)
                 .placeholder(R.drawable.lan)
                 .error(R.drawable.lan)
-                .apply(RequestOptions.bitmapTransform(new RoundedCorners(100)))
+                .apply(RequestOptions.circleCropTransform())
                 .into(holder.ivAvatar);
 
         boolean hasMedia = post.mediaList != null && !post.mediaList.isEmpty();
@@ -176,7 +177,6 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
                 ImageView btnComment = createSideIcon(context, R.drawable.video_comments);
 
                 sideBar.addView(btnLike);
-                // sideBar.addView(btnFavorite); // 移除收藏按钮添加
                 sideBar.addView(btnComment);
 
                 // --- 视频模式下的删除按钮 ---
@@ -324,9 +324,9 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
         TextView tvName, tvTime, tvContent, tvCommentCount;
         ImageView ivAvatar;
         FrameLayout mediaContainer;
-        View layoutLike, layoutComment; // 已移除 layoutDislike (收藏)
+        View layoutLike, layoutComment;
         LinearLayout layoutBottomBar;
-        ImageView ivLike; // 已移除 ivDislike (收藏图标)
+        ImageView ivLike;
 
         public PostViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -337,11 +337,9 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
             ivAvatar = itemView.findViewById(R.id.iv_avatar);
             mediaContainer = itemView.findViewById(R.id.media_container);
             layoutLike = itemView.findViewById(R.id.layout_like);
-            // layoutDislike = itemView.findViewById(R.id.layout_dislike); // 已移除
             layoutComment = itemView.findViewById(R.id.layout_comment);
             layoutBottomBar = itemView.findViewById(R.id.layout_bottom_bar);
             ivLike = itemView.findViewById(R.id.iv_like);
-            // ivDislike = itemView.findViewById(R.id.iv_dislike); // 已移除
         }
     }
 }
