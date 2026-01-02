@@ -17,6 +17,7 @@ import com.gxuwz.ccsa.R;
 import com.gxuwz.ccsa.db.AppDatabase;
 import com.gxuwz.ccsa.model.User;
 import com.gxuwz.ccsa.ui.resident.ResidentMainActivity;
+import com.gxuwz.ccsa.util.SharedPreferencesUtil; // [新增] 需要导入这个工具类
 
 /**
  * 居民注册页面
@@ -188,6 +189,7 @@ public class ResidentRegisterActivity extends AppCompatActivity {
         }
 
         // 3. 所有校验通过，创建用户并保存到数据库
+        // 注意：此时 new 出的 User 对象 id 可能是 0 或 null，需要插入数据库后获取生成 ID
         User user = new User(
                 name,
                 gender,
@@ -197,15 +199,31 @@ public class ResidentRegisterActivity extends AppCompatActivity {
                 selectedBuilding,
                 selectedRoom
         );
+
+        // 插入操作
         db.userDao().insert(user);
 
-        // 4. 注册成功，跳转到居民首界面（使用Bundle传递用户信息）
-        Toast.makeText(this, "注册成功！", Toast.LENGTH_SHORT).show();
-        Intent intent = new Intent(ResidentRegisterActivity.this, ResidentMainActivity.class);
-        Bundle bundle = new Bundle();
-        bundle.putSerializable("user", user); // 显式序列化传递
-        intent.putExtras(bundle);
-        startActivity(intent);
-        finish(); // 关闭注册页面
+        // 【关键修复点】重新从数据库查询完整的用户信息
+        // 目的1：获取数据库自动生成的 ID (User.id)，否则传递给主页和保存的 User 对象 ID 不正确
+        // 目的2：确保后续逻辑使用的是持久化后的数据
+        User registeredUser = db.userDao().findByPhone(phone);
+
+        if (registeredUser != null) {
+            // 【关键修复点】保存用户信息到 SharedPreferences
+            // 你的 MineFragment 会优先读取 SharedPreferencesUtil.getUser()。
+            // 如果这里不保存，MineFragment 就会读取到上一次未清理的旧账号数据（导致显示别人账号），或者读取不到数据。
+            SharedPreferencesUtil.saveUser(this, registeredUser);
+
+            // 4. 注册成功，跳转到居民首界面（使用Bundle传递用户信息）
+            Toast.makeText(this, "注册成功！", Toast.LENGTH_SHORT).show();
+            Intent intent = new Intent(ResidentRegisterActivity.this, ResidentMainActivity.class);
+            Bundle bundle = new Bundle();
+            bundle.putSerializable("user", registeredUser); // 传递包含完整ID的用户对象
+            intent.putExtras(bundle);
+            startActivity(intent);
+            finish(); // 关闭注册页面
+        } else {
+            Toast.makeText(this, "注册失败，请重试", Toast.LENGTH_SHORT).show();
+        }
     }
 }
