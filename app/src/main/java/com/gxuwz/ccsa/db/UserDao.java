@@ -66,4 +66,9 @@ public interface UserDao {
 
     @Query("SELECT COUNT(*) FROM user WHERE community = :community")
     int countResidents(String community);
+
+
+    // 【新增】根据小区、楼栋、房号查询用户（用于检查房屋是否已被注册）
+    @Query("SELECT * FROM user WHERE community = :community AND building = :building AND room = :room LIMIT 1")
+    User findByAddress(String community, String building, String room);
 }
